@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لعبة الأحكام الفخمة</title>
-    <!-- تضمين مكتبة المزامنة اللحظية عبر الإنترنت -->
+    <!-- مكتبة المزامنة اللحظية -->
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
     <style>
         :root {
@@ -48,7 +48,7 @@
         .copyright { margin-top: 25px; font-size: 13px; color: #666; border-top: 1px solid #222; padding-top: 15px; }
         .copyright span { color: var(--accent); font-weight: bold; }
         
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .roulette-anim { animation: pulse 0.5s infinite alternate; color: var(--accent); }
         @keyframes pulse { from { opacity: 0.3; } to { opacity: 1; } }
     </style>
@@ -92,38 +92,57 @@
 
     <!-- حقوق الملكية -->
     <div class="copyright">
-        حقوق اللعبة محفوظة لـ <span>وضاح </span> © 2026
+        حقوق اللعبة محفوظة لـ <span>وضاح</span> © 2026
     </div>
 </div>
 
 <script>
-    // الاتصال بالسيرفر العام المشترك
     const pubnub = new PubNub({
         subscribeKey: "sub-c-43a02a22-220d-11e7-9d7a-02ee2ddab7fe",
         publishKey: "pub-c-6744f4d2-d1e9-4e4c-882f-bf2a9d821e2c",
         uuid: "user_" + Math.random().toString(36).substring(2, 9)
     });
 
-    const roomChannel = "rulers_game_room_2026";
+    // استخدام اسم غرفة فريد وثابت لضمان الربط
+    const roomChannel = "rulers_game_wadah_2026";
     let myName = "";
-    let players = {};
-    let isHost = false;
+    let players = {}; 
 
     pubnub.subscribe({ channels: [roomChannel] });
 
     pubnub.addListener({
         message: (event) => {
             const msg = event.message;
+
+            // 1. عند انضمام شخص جديد، نرسل له القائمة الكاملة الحالية
             if (msg.type === "JOIN") {
-                players[msg.user] = { ready: false };
-                updateList();
-            } else if (msg.type === "READY") {
-                if (players[msg.user]) players[msg.user].ready = true;
-                updateList();
+                if (!players[msg.user]) {
+                    players[msg.user] = { ready: false };
+                }
+                updateListUI();
+                // إرسال الحالة المحدثة للجميع
+                broadcastState();
+            } 
+            // 2. تحديث قائمة الجميع فورياً
+            else if (msg.type === "SYNC_STATE") {
+                players = { ...players, ...msg.players };
+                updateListUI();
                 checkStartTimer();
-            } else if (msg.type === "START_TIMER") {
+            } 
+            // 3. الاستعداد
+            else if (msg.type === "READY") {
+                if (players[msg.user]) {
+                    players[msg.user].ready = true;
+                }
+                updateListUI();
+                checkStartTimer();
+            } 
+            // 4. بدء المؤقت
+            else if (msg.type === "START_TIMER") {
                 runTimer();
-            } else if (msg.type === "DRAW_RESULTS") {
+            } 
+            // 5. إظهار النتائج
+            else if (msg.type === "DRAW_RESULTS") {
                 showFinalResults(msg.results);
             }
         }
@@ -137,13 +156,22 @@
         document.getElementById("sec-login").classList.add("hidden");
         document.getElementById("sec-lobby").classList.remove("hidden");
 
+        players[myName] = { ready: false };
+
         pubnub.publish({
             channel: roomChannel,
             message: { type: "JOIN", user: myName }
         });
     }
 
-    function updateList() {
+    function broadcastState() {
+        pubnub.publish({
+            channel: roomChannel,
+            message: { type: "SYNC_STATE", players: players }
+        });
+    }
+
+    function updateListUI() {
         const listEl = document.getElementById("players-list");
         listEl.innerHTML = "";
         const keys = Object.keys(players);
@@ -161,6 +189,8 @@
         document.getElementById("ready-btn").disabled = true;
         document.getElementById("ready-btn").innerText = "بانتظار موافقة البقية...";
         
+        if (players[myName]) players[myName].ready = true;
+        
         pubnub.publish({
             channel: roomChannel,
             message: { type: "READY", user: myName }
@@ -171,7 +201,7 @@
         const keys = Object.keys(players);
         const allReady = keys.length >= 3 && keys.every(k => players[k].ready);
         
-        // أول شخص ينضم يعتبر الآمر بالبدء لضمان تزامن العد التنازلي
+        // الأبكر دافعاً للبدء يطلق إشارة العد التنازلي للجميع
         if (allReady && keys[0] === myName) {
             pubnub.publish({
                 channel: roomChannel,
@@ -197,7 +227,6 @@
                 document.getElementById("sec-lobby").classList.add("hidden");
                 document.getElementById("sec-result").classList.remove("hidden");
 
-                // الشخص الأول بالانتظار يقوم بحساب القرعة وإرسالها للكل
                 const keys = Object.keys(players);
                 if (keys[0] === myName) {
                     const shuffled = [...keys].sort(() => 0.5 - Math.random());
@@ -221,7 +250,7 @@
             document.getElementById("res-king").innerText = res.king;
             document.getElementById("res-victim").innerText = res.victim;
             document.getElementById("res-witness").innerText = res.witness;
-        }, 1500); // تأثير حركة التأخير للتشويق
+        }, 1200);
     }
 
     function restartGame() {
