@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مجلس الأحكام الملكي - VIP</title>
-    <!-- مكتبة قاعدة البيانات السحابية العالمية المضمونة (PubNub) -->
-    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
+    <!-- مكتبة قاعدة البيانات الحية المفتوحة (MQTT) المضمونة 100% -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         :root {
             --bg: #07050a;
@@ -194,31 +194,35 @@
 </div>
 
 <script>
-    // تهيئة الاتصال بقاعدة البيانات السحابية (نفس التي اشتغلت معك بنجاح أول مرة)
-    const pubnub = new PubNub({
-        subscribeKey: "sub-c-43a02a22-220d-11e7-9d7a-02ee2ddab7fe",
-        publishKey: "pub-c-6744f4d2-d1e9-4e4c-882f-bf2a9d821e2c",
-        uuid: "user_" + Math.random().toString(36).substring(2, 9)
-    });
-
+    let client = null;
     let myName = "";
-    let roomChannel = "";
+    let roomTopic = "";
     let isHost = false;
     let players = [];
 
-    // مراقبة قاعدة البيانات لحظياً
-    pubnub.addListener({
-        message: (event) => {
-            const data = event.message;
+    // دالة الاتصال بقاعدة البيانات المفتوحة
+    function connectDB(code, onConnectCallback) {
+        // الاتصال بسيرفر EMQX العالمي الموثوق والذي لا يحتاج مفاتيح
+        client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
-            // إذا دخل شخص جديد والرئيس موجود
+        roomTopic = 'vip_rulers_room_' + code;
+
+        client.on('connect', () => {
+            client.subscribe(roomTopic);
+            if (onConnectCallback) onConnectCallback();
+        });
+
+        client.on('message', (topic, message) => {
+            const data = JSON.parse(message.toString());
+
+            // إذا أرسل شخص طلب انضمام والرئيس موجود
             if (data.type === 'JOIN_REQ' && isHost) {
                 if (!players.includes(data.name)) {
                     players.push(data.name);
                 }
                 updateUI();
-                // الرئيس يرسل القائمة المحدثة للجميع
-                pubnub.publish({ channel: roomChannel, message: { type: 'SYNC_PLAYERS', players: players } });
+                // الرئيس يحدث القائمة لجميع الأعضاء
+                client.publish(roomTopic, JSON.stringify({ type: 'SYNC_PLAYERS', players: players }));
             } 
             // استقبال القائمة المحدثة (للأعضاء)
             else if (data.type === 'SYNC_PLAYERS') {
@@ -229,29 +233,32 @@
             else if (data.type === 'DRAW_RESULTS') {
                 showResults(data.results);
             }
-        }
-    });
+        });
+
+        client.on('error', () => {
+            alert("حدث خطأ في الاتصال، يرجى المحاولة مرة أخرى.");
+        });
+    }
 
     function createRoom() {
         myName = document.getElementById("username").value.trim();
         if (!myName) return alert("يرجى إدخال اسمك الكريم أولاً!");
 
         const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
-        roomChannel = "vip_room_" + randomCode;
         isHost = true;
 
-        // الاشتراك في القناة السحابية
-        pubnub.subscribe({ channels: [roomChannel] });
+        connectDB(randomCode, () => {
+            document.getElementById("sec-join").classList.add("hidden");
+            document.getElementById("sec-lobby").classList.remove("hidden");
+            document.getElementById("display-room-code").innerText = randomCode;
+            document.getElementById("start-btn").classList.remove("hidden");
+            document.getElementById("waiting-msg").classList.add("hidden");
 
-        document.getElementById("sec-join").classList.add("hidden");
-        document.getElementById("sec-lobby").classList.remove("hidden");
-        document.getElementById("display-room-code").innerText = randomCode;
-        document.getElementById("start-btn").classList.remove("hidden");
-        document.getElementById("waiting-msg").classList.add("hidden");
-
-        // إضافة الرئيس للقائمة
-        players.push(myName);
-        updateUI();
+            // إضافة اسم الرئيس للقائمة وبثها
+            players.push(myName);
+            updateUI();
+            client.publish(roomTopic, JSON.stringify({ type: 'SYNC_PLAYERS', players: players }));
+        });
     }
 
     function joinRoom() {
@@ -261,19 +268,14 @@
         if (!myName) return alert("يرجى إدخال اسمك الكريم!");
         if (!code) return alert("يرجى كتابة رمز المجلس للانضمام!");
 
-        roomChannel = "vip_room_" + code;
-        
-        // الاشتراك في القناة السحابية
-        pubnub.subscribe({ channels: [roomChannel] });
+        connectDB(code, () => {
+            document.getElementById("sec-join").classList.add("hidden");
+            document.getElementById("sec-lobby").classList.remove("hidden");
+            document.getElementById("display-room-code").innerText = code;
 
-        document.getElementById("sec-join").classList.add("hidden");
-        document.getElementById("sec-lobby").classList.remove("hidden");
-        document.getElementById("display-room-code").innerText = code;
-
-        // إرسال الاسم لقاعدة البيانات ليضيفه الرئيس
-        setTimeout(() => {
-            pubnub.publish({ channel: roomChannel, message: { type: 'JOIN_REQ', name: myName } });
-        }, 800);
+            // إرسال الاسم لقاعدة البيانات ليضيفه الرئيس
+            client.publish(roomTopic, JSON.stringify({ type: 'JOIN_REQ', name: myName }));
+        });
     }
 
     function updateUI() {
@@ -298,7 +300,7 @@
         const results = { king: shuffled[0], victim: shuffled[1], witness: shuffled[2] };
 
         // إرسال النتيجة عبر قاعدة البيانات
-        pubnub.publish({ channel: roomChannel, message: { type: 'DRAW_RESULTS', results: results } });
+        client.publish(roomTopic, JSON.stringify({ type: 'DRAW_RESULTS', results: results }));
     }
 
     function showResults(results) {
