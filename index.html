@@ -3,238 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة الأحكام الفخمة</title>
-    <!-- مكتبة المزامنة اللحظية -->
-    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
+    <title>لعبة الأحكام - VIP</title>
+    <!-- مكتبة السيرفر المباشر الشغال 100% -->
+    <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
     <style>
         :root {
-            --primary: #ff0055;
-            --accent: #00f0ff;
-            --gold: #ffbe0b;
-            --bg: #0b0c10;
-            --card-bg: #1f2833;
+            --bg: #0d0914;
+            --panel: #171026;
+            --accent: #9d4edd;
+            --gold: #ffb703;
+            --red: #ff0055;
+            --green: #06d6a0;
+            --text: #ffffff;
         }
 
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; transition: all 0.3s ease; }
-        body { background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; }
-        
-        .container { background: var(--card-bg); border: 2px solid #333; border-radius: 20px; padding: 30px; width: 100%; max-width: 480px; text-align: center; box-shadow: 0 0 30px rgba(255, 0, 85, 0.15); position: relative; overflow: hidden; }
-        .container::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,0,85,0.05) 0%, transparent 70%); pointer-events: none; }
-        
-        h1 { color: #fff; text-shadow: 0 0 10px var(--primary); margin-bottom: 5px; font-size: 28px; }
-        .subtitle { color: #888; font-size: 14px; margin-bottom: 25px; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
 
-        input { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; border: 1px solid #444; background: #0b0c10; color: #fff; font-size: 16px; text-align: center; outline: none; }
-        input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(255, 0, 85, 0.3); }
+        .card { background: var(--panel); border: 2px solid #2a1b4e; border-radius: 24px; padding: 25px; width: 100%; max-width: 440px; text-align: center; box-shadow: 0 10px 40px rgba(157, 78, 221, 0.2); position: relative; }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, var(--gold), var(--accent), var(--red)); border-radius: 24px 24px 0 0; }
 
-        button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; border: none; background: linear-gradient(45deg, var(--primary), #ff5000); color: white; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 0, 85, 0.4); }
-        button:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
-        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 0, 85, 0.6); }
+        h1 { font-size: 28px; font-weight: 900; background: linear-gradient(45deg, var(--gold), #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px; }
+        .subtitle { color: #a093c4; font-size: 13px; margin-bottom: 20px; }
 
-        .players-box { background: #0b0c10; border-radius: 12px; padding: 15px; margin: 15px 0; border: 1px solid #222; }
-        ul { list-style: none; padding: 0; margin: 0; max-height: 160px; overflow-y: auto; }
-        li { padding: 10px; border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
+        .status-bar { background: #0f0a1c; border-radius: 12px; padding: 8px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; border: 1px solid #281a42; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; }
+        .dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+        input { width: 100%; padding: 15px; border-radius: 14px; border: 2px solid #2d1d52; background: #0a0612; color: #fff; font-size: 16px; text-align: center; outline: none; margin-bottom: 12px; }
+        input:focus { border-color: var(--accent); }
+
+        button { width: 100%; padding: 15px; border-radius: 14px; border: none; background: linear-gradient(45deg, var(--accent), #7b2cbf); color: white; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(157, 78, 221, 0.4); margin-bottom: 10px; }
+        button:disabled { background: #261c3b !important; color: #66528c !important; box-shadow: none !important; cursor: not-allowed; }
+
+        .list-box { background: #0a0612; border-radius: 16px; padding: 15px; border: 1px solid #281a42; margin: 15px 0; text-align: right; }
+        .list-title { font-size: 13px; color: #a093c4; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        ul { list-style: none; max-height: 140px; overflow-y: auto; }
+        li { padding: 8px 12px; border-bottom: 1px solid #1a1030; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
         li:last-child { border: none; }
-        .badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; background: #222; }
-        .badge.ready { background: #00b4d8; color: #fff; }
+        .tag { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: #261c3b; color: #aaa; }
+        .tag.ready { background: rgba(6, 214, 160, 0.2); color: var(--green); border: 1px solid var(--green); }
 
-        .timer-box { font-size: 22px; color: var(--gold); font-weight: bold; margin: 15px 0; text-shadow: 0 0 8px rgba(255, 190, 11, 0.4); }
-        
-        .role-card { margin: 12px 0; padding: 15px; border-radius: 12px; font-size: 18px; font-weight: bold; text-align: right; display: flex; justify-content: space-between; align-items: center; }
-        .r-king { background: linear-gradient(90deg, #ffbe0b, #fb5607); color: #000; }
-        .r-victim { background: linear-gradient(90deg, #ff0055, #ff5000); color: #fff; }
-        .r-witness { background: linear-gradient(90deg, #00f0ff, #0077b6); color: #000; }
+        .timer-display { font-size: 20px; font-weight: bold; color: var(--gold); margin: 15px 0; background: rgba(255, 183, 3, 0.1); padding: 10px; border-radius: 12px; border: 1px dashed var(--gold); }
 
-        .copyright { margin-top: 25px; font-size: 13px; color: #666; border-top: 1px solid #222; padding-top: 15px; }
-        .copyright span { color: var(--accent); font-weight: bold; }
+        .res-card { padding: 15px; border-radius: 14px; margin: 10px 0; font-weight: bold; text-align: right; display: flex; justify-content: space-between; font-size: 16px; }
+        .king { background: linear-gradient(90deg, #ffb703, #fb8500); color: #000; }
+        .victim { background: linear-gradient(90deg, #ff0055, #ff5000); color: #fff; }
+        .witness { background: linear-gradient(90deg, #7209b7, #4cc9f0); color: #fff; }
+
+        .footer { margin-top: 20px; font-size: 12px; color: #66528c; border-top: 1px solid #23163d; padding-top: 12px; }
+        .footer b { color: var(--gold); }
         
         .hidden { display: none !important; }
-        .roulette-anim { animation: pulse 0.5s infinite alternate; color: var(--accent); }
-        @keyframes pulse { from { opacity: 0.3; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>🎲 لعبة الأحكام</h1>
-    <div class="subtitle">غرفة اللعب الجماعية المباشرة</div>
+<div class="card">
+    <h1>🎲 لعبة الأحكام الملكية</h1>
+    <div class="subtitle">غرفة اللعب الجماعية التفاعلية</div>
 
-    <!-- شاشة الانضمام -->
-    <div id="sec-login">
-        <input type="text" id="username" placeholder="أدخل اسمك الفخم هنا..." maxlength="15">
-        <button onclick="joinRoom()">انضمام إلى الغرفة</button>
+    <div class="status-bar">
+        <div id="net-dot" class="dot"></div>
+        <span id="net-text">جاري الاتصال بالسيرفر...</span>
     </div>
 
-    <!-- شاشة الانتظار -->
+    <!-- 1. شاشة الدخول -->
+    <div id="sec-join">
+        <input type="text" id="username" placeholder="اكتب اسمك الفخم هنا..." maxlength="15">
+        <button id="join-btn" onclick="joinGame()" disabled>انضمام للغرفة</button>
+    </div>
+
+    <!-- 2. غرفة الانتظار -->
     <div id="sec-lobby" class="hidden">
-        <div class="players-box">
-            <div style="margin-bottom: 10px; color: #aaa;">اللاعبون المتصلون (<span id="count">0</span>)</div>
-            <ul id="players-list"></ul>
-        </div>
-        
-        <div id="timer-display" class="timer-box hidden">
-            ⏳ جاري القرعة خلال: <span id="seconds">30</span> ثانية
+        <div class="list-box">
+            <div class="list-title">
+                <span>اللاعبون المنضمون:</span>
+                <b id="p-count">0</b>
+            </div>
+            <ul id="p-list"></ul>
         </div>
 
-        <button id="ready-btn" onclick="sendReady()">أنا مستعد للبدء 👍</button>
+        <div id="timer-box" class="timer-display hidden">
+            ⏳ تبدأ القرعة خلال: <span id="sec">30</span> ثانية
+        </div>
+
+        <button id="ready-btn" onclick="markReady()">أنا جاهز للبدء 👍</button>
     </div>
 
-    <!-- شاشة النتائج -->
+    <!-- 3. النتيجة -->
     <div id="sec-result" class="hidden">
-        <h2 id="roulette-status" class="roulette-anim">🔥 جاري سحب القرعة... 🔥</h2>
-        <div id="roles-display" class="hidden">
-            <div class="role-card r-king"><span>👑 الحاكم:</span> <span id="res-king">-</span></div>
-            <div class="role-card r-victim"><span>🎯 المحكوم عليه:</span> <span id="res-victim">-</span></div>
-            <div class="role-card r-witness"><span>👁️ الشاهد:</span> <span id="res-witness">-</span></div>
-        </div>
-        <button onclick="restartGame()" style="margin-top:20px;">جولة جديدة 🔄</button>
+        <h3 style="color:var(--gold); margin-bottom:15px;">🎉 أكتملت القرعة بنجاح 🎉</h3>
+        <div class="res-card king"><span>👑 الحاكم:</span> <span id="r-king">-</span></div>
+        <div class="res-card victim"><span>🎯 المحكوم عليه:</span> <span id="r-victim">-</span></div>
+        <div class="res-card witness"><span>👁️ الشاهد:</span> <span id="r-witness">-</span></div>
+        <button onclick="location.reload()" style="margin-top:15px;">جولة جديدة 🔄</button>
     </div>
 
-    <!-- حقوق الملكية -->
-    <div class="copyright">
-        حقوق اللعبة محفوظة لـ <span>وضاح</span> © 2026
-    </div>
+    <div class="footer">حقوق اللعبة محفوظة لـ <b>وضاح</b> © 2026</div>
 </div>
 
 <script>
-    const pubnub = new PubNub({
-        subscribeKey: "sub-c-43a02a22-220d-11e7-9d7a-02ee2ddab7fe",
-        publishKey: "pub-c-6744f4d2-d1e9-4e4c-882f-bf2a9d821e2c",
-        uuid: "user_" + Math.random().toString(36).substring(2, 9)
-    });
-
-    // استخدام اسم غرفة فريد وثابت لضمان الربط
-    const roomChannel = "rulers_game_wadah_2026";
+    // سيرفر Scaledrone المباشر والسريع جداً
+    const CHANNEL_ID = 'yj5y83gS5S8uJ6Qd'; 
+    let drone = null;
+    let room = null;
     let myName = "";
-    let players = {}; 
+    let membersList = {};
 
-    pubnub.subscribe({ channels: [roomChannel] });
+    // 1. الاتصال المباشر بالسيرفر
+    drone = new Scaledrone(CHANNEL_ID);
 
-    pubnub.addListener({
-        message: (event) => {
-            const msg = event.message;
-
-            // 1. عند انضمام شخص جديد، نرسل له القائمة الكاملة الحالية
-            if (msg.type === "JOIN") {
-                if (!players[msg.user]) {
-                    players[msg.user] = { ready: false };
-                }
-                updateListUI();
-                // إرسال الحالة المحدثة للجميع
-                broadcastState();
-            } 
-            // 2. تحديث قائمة الجميع فورياً
-            else if (msg.type === "SYNC_STATE") {
-                players = { ...players, ...msg.players };
-                updateListUI();
-                checkStartTimer();
-            } 
-            // 3. الاستعداد
-            else if (msg.type === "READY") {
-                if (players[msg.user]) {
-                    players[msg.user].ready = true;
-                }
-                updateListUI();
-                checkStartTimer();
-            } 
-            // 4. بدء المؤقت
-            else if (msg.type === "START_TIMER") {
-                runTimer();
-            } 
-            // 5. إظهار النتائج
-            else if (msg.type === "DRAW_RESULTS") {
-                showFinalResults(msg.results);
-            }
-        }
+    drone.on('open', error => {
+        if (error) return console.error(error);
+        document.getElementById("net-dot").classList.add("online");
+        document.getElementById("net-text").innerText = "متصل بالسيرفر المباشر ✅";
+        document.getElementById("join-btn").disabled = false;
     });
 
-    function joinRoom() {
-        const input = document.getElementById("username");
-        myName = input.value.trim();
-        if (!myName) return alert("يرجى كتابة الاسم أولاً!");
+    function joinGame() {
+        myName = document.getElementById("username").value.trim();
+        if (!myName) return alert("اكتب اسمك أولاً!");
 
-        document.getElementById("sec-login").classList.add("hidden");
+        document.getElementById("sec-join").classList.add("hidden");
         document.getElementById("sec-lobby").classList.remove("hidden");
 
-        players[myName] = { ready: false };
+        // الاشتراك في الغرفة العامة
+        room = drone.subscribe('observable-rulers-room');
 
-        pubnub.publish({
-            channel: roomChannel,
-            message: { type: "JOIN", user: myName }
+        room.on('open', error => {
+            if (error) console.error(error);
+        });
+
+        // قائمة المتواجدين الحالية
+        room.on('members', members => {
+            members.forEach(m => {
+                if (m.clientData) membersList[m.id] = m.clientData;
+            });
+            // إضافة نفسي
+            drone.publish({
+                room: 'observable-rulers-room',
+                message: { type: 'JOIN', name: myName }
+            });
+        });
+
+        // عند دخول شخص جديد
+        room.on('member_join', member => {
+            // إرسال بياني له
+            drone.publish({
+                room: 'observable-rulers-room',
+                message: { type: 'SYNC', name: myName }
+            });
+        });
+
+        // الاستماع للرسائل بين الجوالات
+        room.on('data', (data, member) => {
+            if (data.type === 'JOIN' || data.type === 'SYNC') {
+                membersList[member.id] = { name: data.name, ready: false };
+                updateUI();
+            } else if (data.type === 'READY') {
+                if (membersList[member.id]) membersList[member.id].ready = true;
+                updateUI();
+                checkAllReady();
+            } else if (data.type === 'START_TIMER') {
+                startCountdown();
+            } else if (data.type === 'WINNERS') {
+                showResults(data.roles);
+            }
         });
     }
 
-    function broadcastState() {
-        pubnub.publish({
-            channel: roomChannel,
-            message: { type: "SYNC_STATE", players: players }
-        });
-    }
+    function updateUI() {
+        const ul = document.getElementById("p-list");
+        ul.innerHTML = "";
+        const keys = Object.keys(membersList);
+        document.getElementById("p-count").innerText = keys.length;
 
-    function updateListUI() {
-        const listEl = document.getElementById("players-list");
-        listEl.innerHTML = "";
-        const keys = Object.keys(players);
-        document.getElementById("count").innerText = keys.length;
-
-        keys.forEach(p => {
+        keys.forEach(k => {
+            const m = membersList[k];
             const li = document.createElement("li");
-            const isReady = players[p].ready;
-            li.innerHTML = `<span>${p}</span> <span class="badge ${isReady ? 'ready' : ''}">${isReady ? 'جاهز ✅' : 'ينتظر ⏳'}</span>`;
-            listEl.appendChild(li);
+            li.innerHTML = `<span>${m.name}</span> <span class="tag ${m.ready ? 'ready' : ''}">${m.ready ? 'جاهز ✅' : 'ينتظر ⏳'}</span>`;
+            ul.appendChild(li);
         });
     }
 
-    function sendReady() {
+    function markReady() {
         document.getElementById("ready-btn").disabled = true;
         document.getElementById("ready-btn").innerText = "بانتظار موافقة البقية...";
-        
-        if (players[myName]) players[myName].ready = true;
-        
-        pubnub.publish({
-            channel: roomChannel,
-            message: { type: "READY", user: myName }
+        drone.publish({
+            room: 'observable-rulers-room',
+            message: { type: 'READY' }
         });
     }
 
-    function checkStartTimer() {
-        const keys = Object.keys(players);
-        const allReady = keys.length >= 3 && keys.every(k => players[k].ready);
+    function checkAllReady() {
+        const keys = Object.keys(membersList);
+        const allReady = keys.length >= 3 && keys.every(k => membersList[k].ready);
         
-        // الأبكر دافعاً للبدء يطلق إشارة العد التنازلي للجميع
-        if (allReady && keys[0] === myName) {
-            pubnub.publish({
-                channel: roomChannel,
-                message: { type: "START_TIMER" }
+        // الأبكر يقوم بإرسال أمر بدء التنازلي للجميع
+        if (allReady && keys[0] === drone.clientId) {
+            drone.publish({
+                room: 'observable-rulers-room',
+                message: { type: 'START_TIMER' }
             });
         }
     }
 
-    let timerRunning = false;
-    function runTimer() {
-        if (timerRunning) return;
-        timerRunning = true;
+    let timerStarted = false;
+    function startCountdown() {
+        if (timerStarted) return;
+        timerStarted = true;
 
-        document.getElementById("timer-display").classList.remove("hidden");
+        document.getElementById("timer-box").classList.remove("hidden");
         let left = 30;
 
-        const interval = setInterval(() => {
+        const t = setInterval(() => {
             left--;
-            document.getElementById("seconds").innerText = left;
+            document.getElementById("sec").innerText = left;
 
             if (left <= 0) {
-                clearInterval(interval);
-                document.getElementById("sec-lobby").classList.add("hidden");
-                document.getElementById("sec-result").classList.remove("hidden");
-
-                const keys = Object.keys(players);
-                if (keys[0] === myName) {
-                    const shuffled = [...keys].sort(() => 0.5 - Math.random());
-                    pubnub.publish({
-                        channel: roomChannel,
+                clearInterval(t);
+                
+                // حساب القرعة وإرسال النتائج
+                const keys = Object.keys(membersList);
+                if (keys[0] === drone.clientId) {
+                    const shuffled = keys.map(k => membersList[k].name).sort(() => 0.5 - Math.random());
+                    drone.publish({
+                        room: 'observable-rulers-room',
                         message: {
-                            type: "DRAW_RESULTS",
-                            results: { king: shuffled[0], victim: shuffled[1], witness: shuffled[2] }
+                            type: 'WINNERS',
+                            roles: { king: shuffled[0], victim: shuffled[1], witness: shuffled[2] }
                         }
                     });
                 }
@@ -242,19 +240,13 @@
         }, 1000);
     }
 
-    function showFinalResults(res) {
-        setTimeout(() => {
-            document.getElementById("roulette-status").classList.add("hidden");
-            document.getElementById("roles-display").classList.remove("hidden");
+    function showResults(roles) {
+        document.getElementById("sec-lobby").classList.add("hidden");
+        document.getElementById("sec-result").classList.remove("hidden");
 
-            document.getElementById("res-king").innerText = res.king;
-            document.getElementById("res-victim").innerText = res.victim;
-            document.getElementById("res-witness").innerText = res.witness;
-        }, 1200);
-    }
-
-    function restartGame() {
-        location.reload();
+        document.getElementById("r-king").innerText = roles.king;
+        document.getElementById("r-victim").innerText = roles.victim;
+        document.getElementById("r-witness").innerText = roles.witness;
     }
 </script>
 
