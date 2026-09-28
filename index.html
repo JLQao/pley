@@ -3,56 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة الأحكام - VIP</title>
-    <!-- مكتبة سيرفرات جوجل المباشرة للربط اللحظي -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <title>مجلس الأحكام الملكي - VIP</title>
+    <!-- مكتبة الاتصال المباشر بين الجوالات فورياً WebRTC -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
-            --bg: #0d0914;
-            --panel: #171026;
-            --accent: #9d4edd;
-            --gold: #ffb703;
-            --red: #ff0055;
-            --green: #06d6a0;
+            --bg: #07050a;
+            --panel: rgba(23, 16, 38, 0.85);
+            --gold: #f7d070;
+            --gold-dark: #c8963e;
+            --red: #ff2a5f;
+            --green: #00f0b5;
             --text: #ffffff;
+            --border: rgba(247, 208, 112, 0.25);
         }
 
-        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; }
-        body { background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
+        body { 
+            background: radial-gradient(circle at center, #1b102e 0%, var(--bg) 100%); 
+            color: var(--text); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            padding: 15px; 
+        }
 
-        .card { background: var(--panel); border: 2px solid #2a1b4e; border-radius: 24px; padding: 25px; width: 100%; max-width: 440px; text-align: center; box-shadow: 0 10px 40px rgba(157, 78, 221, 0.2); position: relative; }
-        .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, var(--gold), var(--accent), var(--red)); border-radius: 24px 24px 0 0; }
+        .card { 
+            background: var(--panel); 
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border); 
+            border-radius: 28px; 
+            padding: 30px 25px; 
+            width: 100%; 
+            max-width: 450px; 
+            text-align: center; 
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(247, 208, 112, 0.1); 
+            position: relative; 
+            overflow: hidden;
+        }
 
-        h1 { font-size: 28px; font-weight: 900; background: linear-gradient(45deg, var(--gold), #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px; }
-        .subtitle { color: #a093c4; font-size: 13px; margin-bottom: 20px; }
+        .card::before { 
+            content: ''; 
+            position: absolute; 
+            top: 0; left: 0; right: 0; 
+            height: 4px; 
+            background: linear-gradient(90deg, transparent, var(--gold), transparent); 
+        }
 
-        .status-bar { background: #0f0a1c; border-radius: 12px; padding: 8px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; border: 1px solid #281a42; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; }
-        .dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        h1 { 
+            font-size: 26px; 
+            font-weight: 900; 
+            background: linear-gradient(180deg, #ffffff 30%, var(--gold) 100%); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            letter-spacing: 1px;
+            margin-bottom: 4px; 
+        }
+        .subtitle { color: #8e83ab; font-size: 13px; margin-bottom: 22px; font-weight: 300; }
 
-        input { width: 100%; padding: 15px; border-radius: 14px; border: 2px solid #2d1d52; background: #0a0612; color: #fff; font-size: 16px; text-align: center; outline: none; margin-bottom: 12px; }
-        input:focus { border-color: var(--accent); }
+        .status-bar { 
+            background: rgba(10, 6, 18, 0.6); 
+            border-radius: 50px; 
+            padding: 8px 16px; 
+            font-size: 12px; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 10px; 
+            margin-bottom: 20px; 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4757; transition: all 0.3s; }
+        .dot.online { background: var(--green); box-shadow: 0 0 10px var(--green); }
 
-        button { width: 100%; padding: 15px; border-radius: 14px; border: none; background: linear-gradient(45deg, var(--accent), #7b2cbf); color: white; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(157, 78, 221, 0.4); margin-bottom: 10px; }
-        button:disabled { background: #261c3b !important; color: #66528c !important; box-shadow: none !important; cursor: not-allowed; }
+        input { 
+            width: 100%; 
+            padding: 16px; 
+            border-radius: 16px; 
+            border: 1px solid rgba(247, 208, 112, 0.2); 
+            background: rgba(10, 6, 18, 0.8); 
+            color: #fff; 
+            font-size: 15px; 
+            text-align: center; 
+            outline: none; 
+            margin-bottom: 14px; 
+            transition: all 0.3s;
+        }
+        input:focus { border-color: var(--gold); box-shadow: 0 0 15px rgba(247, 208, 112, 0.2); }
 
-        .list-box { background: #0a0612; border-radius: 16px; padding: 15px; border: 1px solid #281a42; margin: 15px 0; text-align: right; }
-        .list-title { font-size: 13px; color: #a093c4; margin-bottom: 10px; display: flex; justify-content: space-between; }
-        ul { list-style: none; max-height: 140px; overflow-y: auto; }
-        li { padding: 8px 12px; border-bottom: 1px solid #1a1030; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+        button { 
+            width: 100%; 
+            padding: 16px; 
+            border-radius: 16px; 
+            border: none; 
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); 
+            color: #0d0814; 
+            font-size: 16px; 
+            font-weight: 800; 
+            cursor: pointer; 
+            box-shadow: 0 6px 20px rgba(247, 208, 112, 0.25); 
+            margin-bottom: 10px; 
+            transition: all 0.3s;
+        }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(247, 208, 112, 0.4); }
+        button:disabled { background: #1e172e !important; color: #584b73 !important; box-shadow: none !important; cursor: not-allowed; }
+
+        .list-box { 
+            background: rgba(10, 6, 18, 0.7); 
+            border-radius: 18px; 
+            padding: 18px; 
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+            margin: 18px 0; 
+            text-align: right; 
+        }
+        .list-title { font-size: 13px; color: #a497c6; margin-bottom: 12px; display: flex; justify-content: space-between; }
+        ul { list-style: none; max-height: 150px; overflow-y: auto; }
+        li { padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
         li:last-child { border: none; }
-        .tag { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: #261c3b; color: #aaa; }
-        .tag.ready { background: rgba(6, 214, 160, 0.2); color: var(--green); border: 1px solid var(--green); }
+        
+        .tag { font-size: 11px; padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #888; }
+        .tag.ready { background: rgba(0, 240, 181, 0.15); color: var(--green); border: 1px solid rgba(0, 240, 181, 0.3); }
 
-        .timer-display { font-size: 20px; font-weight: bold; color: var(--gold); margin: 15px 0; background: rgba(255, 183, 3, 0.1); padding: 10px; border-radius: 12px; border: 1px dashed var(--gold); }
+        .timer-display { 
+            font-size: 18px; 
+            font-weight: 700; 
+            color: var(--gold); 
+            margin: 15px 0; 
+            background: rgba(247, 208, 112, 0.05); 
+            padding: 12px; 
+            border-radius: 14px; 
+            border: 1px dashed var(--gold); 
+        }
 
-        .res-card { padding: 15px; border-radius: 14px; margin: 10px 0; font-weight: bold; text-align: right; display: flex; justify-content: space-between; font-size: 16px; }
-        .king { background: linear-gradient(90deg, #ffb703, #fb8500); color: #000; }
-        .victim { background: linear-gradient(90deg, #ff0055, #ff5000); color: #fff; }
-        .witness { background: linear-gradient(90deg, #7209b7, #4cc9f0); color: #fff; }
+        .res-card { 
+            padding: 16px; 
+            border-radius: 16px; 
+            margin: 12px 0; 
+            font-weight: 800; 
+            text-align: right; 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 16px; 
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        .king { background: linear-gradient(90deg, #f7d070, #e0a938); color: #120b1f; }
+        .victim { background: linear-gradient(90deg, #ff2a5f, #bf133d); color: #fff; }
+        .witness { background: linear-gradient(90deg, #2a9df4, #1260cc); color: #fff; }
 
-        .footer { margin-top: 20px; font-size: 12px; color: #66528c; border-top: 1px solid #23163d; padding-top: 12px; }
+        .footer { margin-top: 22px; font-size: 12px; color: #5d527a; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; }
         .footer b { color: var(--gold); }
         
         .hidden { display: none !important; }
@@ -61,131 +159,138 @@
 <body>
 
 <div class="card">
-    <h1>🎲 لعبة الأحكام الملكية</h1>
-    <div class="subtitle">غرفة اللعب الجماعية التفاعلية</div>
+    <h1>🏛️ مجلس الأحكام الملكي</h1>
+    <div class="subtitle">منصة الاقتراع والقرعة المباشرة</div>
 
     <div class="status-bar">
         <div id="net-dot" class="dot"></div>
-        <span id="net-text">جاري الاتصال بالسيرفر...</span>
+        <span id="net-text">تأهب الشبكة...</span>
     </div>
 
     <!-- 1. شاشة الدخول -->
     <div id="sec-join">
-        <input type="text" id="username" placeholder="اكتب اسمك الفخم هنا..." maxlength="15">
-        <button id="join-btn" onclick="joinGame()" disabled>انضمام للغرفة</button>
+        <input type="text" id="username" placeholder="أدخل اسمك الكريم..." maxlength="15">
+        <button id="join-btn" onclick="initPeer()" disabled>دخول المجلس</button>
     </div>
 
-    <!-- 2. غرفة الانتظار -->
+    <!-- 2. مجلس الانتظار -->
     <div id="sec-lobby" class="hidden">
         <div class="list-box">
             <div class="list-title">
-                <span>اللاعبون المنضمون:</span>
-                <b id="p-count">0</b>
+                <span>أعضاء المجلس الحاضرون:</span>
+                <b id="p-count">1</b>
             </div>
             <ul id="p-list"></ul>
         </div>
 
         <div id="timer-box" class="timer-display hidden">
-            ⏳ تبدأ القرعة خلال: <span id="sec">30</span> ثانية
+            ⏳ تنعقد القرعة خلال: <span id="sec">15</span> ثانية
         </div>
 
-        <button id="ready-btn" onclick="markReady()">أنا جاهز للبدء 👍</button>
+        <button id="ready-btn" onclick="sendReady()">أنا مستعد للانعقاد 👑</button>
     </div>
 
-    <!-- 3. النتيجة -->
+    <!-- 3. شاشة إعلان الأحكام -->
     <div id="sec-result" class="hidden">
-        <h3 style="color:var(--gold); margin-bottom:15px;">🎉 أكتملت القرعة بنجاح 🎉</h3>
-        <div class="res-card king"><span>👑 الحاكم:</span> <span id="r-king">-</span></div>
+        <h3 style="color:var(--gold); margin-bottom:15px; font-size:20px;">📜 صدر الحكم الملكي 📜</h3>
+        <div class="res-card king"><span>👑 جلالة الحاكم:</span> <span id="r-king">-</span></div>
         <div class="res-card victim"><span>🎯 المحكوم عليه:</span> <span id="r-victim">-</span></div>
-        <div class="res-card witness"><span>👁️ الشاهد:</span> <span id="r-witness">-</span></div>
-        <button onclick="resetRoom()" style="margin-top:15px;">جولة جديدة 🔄</button>
+        <div class="res-card witness"><span>👁️ الشاهد الملكي:</span> <span id="r-witness">-</span></div>
+        <button onclick="location.reload()" style="margin-top:20px;">جلسة جديدة 🔄</button>
     </div>
 
-    <div class="footer">حقوق اللعبة محفوظة لـ <b>وضاح</b> © 2026</div>
+    <div class="footer">صُممت الفخامة بحقوق <b>وضاح</b> © 2026</div>
 </div>
 
 <script>
-    // إعدادات خادم Firebase للربط المباشر المضمون
-    const firebaseConfig = {
-        databaseURL: "https://rulers-game-default-rtdb.firebaseio.com"
+    let peer = null;
+    let connections = [];
+    let myName = "";
+    let players = {};
+
+    // تفعيل الزر فور تحميل الصفحة
+    window.onload = () => {
+        document.getElementById("net-dot").classList.add("online");
+        document.getElementById("net-text").innerText = "الشبكة جاهزة للانعقاد ✅";
+        document.getElementById("join-btn").disabled = false;
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const roomRef = db.ref('game_room');
-
-    let myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
-    let myName = "";
-    let isConnected = false;
-
-    // الاتصال الفوري بالسيرفر
-    db.ref('.info/connected').on('value', (snap) => {
-        if (snap.val() === true) {
-            isConnected = true;
-            document.getElementById("net-dot").classList.add("online");
-            document.getElementById("net-text").innerText = "متصل بالسيرفر المباشر ✅";
-            document.getElementById("join-btn").disabled = false;
-        }
-    });
-
-    function joinGame() {
+    function initPeer() {
         myName = document.getElementById("username").value.trim();
-        if (!myName) return alert("اكتب اسمك أولاً!");
+        if (!myName) return alert("يرجى إدخال اسمك الكريم أولاً!");
 
-        document.getElementById("sec-join").classList.add("hidden");
-        document.getElementById("sec-lobby").classList.remove("hidden");
+        document.getElementById("join-btn").disabled = true;
+        document.getElementById("net-text").innerText = "جاري الاتصال المباشر...";
 
-        // تسجيل البيانات في السيرفر
-        const userRef = roomRef.child('players/' + myUserId);
-        userRef.set({
-            name: myName,
-            ready: false
+        // استخدام معرف ثابت وموحد للغرفة لربط الأجهزة المباشر
+        const roomId = "vip_rulers_room_wadah_2026";
+        
+        // الاتصال المباشر P2P
+        peer = new Peer();
+
+        peer.on('open', (id) => {
+            document.getElementById("sec-join").classList.add("hidden");
+            document.getElementById("sec-lobby").classList.remove("hidden");
+            
+            players[id] = { name: myName, ready: false };
+            updateUI();
+
+            // المحاولة للاتصال بقائد الغرفة
+            let conn = peer.connect(roomId);
+            
+            conn.on('open', () => {
+                setupConnection(conn);
+                conn.send({ type: 'JOIN', name: myName, id: id });
+            });
+
+            // إذا تعذر الاتصال، تصبح أنت قائد الغرفة (Host)
+            peer.on('error', (err) => {
+                if (err.type === 'peer-not-found') {
+                    peer.destroy();
+                    peer = new Peer(roomId);
+                    peer.on('open', () => {
+                        document.getElementById("net-text").innerText = "أنت رئيس المجلس الآن 👑";
+                    });
+                    peer.on('connection', (c) => setupConnection(c));
+                }
+            });
         });
 
-        // حذف اللاعب تلقائياً عند إغلاق الصفحة
-        userRef.onDisconnect().remove();
-
-        // الاستماع للتغييرات الفورية للجميع
-        listenToRoom();
+        peer.on('connection', (c) => setupConnection(c));
     }
 
-    function markReady() {
-        document.getElementById("ready-btn").disabled = true;
-        document.getElementById("ready-btn").innerText = "بانتظار موافقة البقية...";
-        roomRef.child('players/' + myUserId + '/ready').set(true);
-    }
+    function setupConnection(conn) {
+        if (!connections.includes(conn)) connections.push(conn);
 
-    function listenToRoom() {
-        roomRef.on('value', (snapshot) => {
-            const data = snapshot.val() || {};
-            const players = data.players || {};
-            
-            // 1. تحديث قائمة الأسماء في الواجهة
-            updateUI(players);
-
-            // 2. فحص جاهزية الجميع والبدء التلقائي للعد التنازلي
-            const playerKeys = Object.keys(players);
-            const allReady = playerKeys.length >= 3 && playerKeys.every(k => players[k].ready);
-
-            if (allReady && !data.timerStarted) {
-                if (playerKeys[0] === myUserId) {
-                    roomRef.child('timerStarted').set(true);
-                }
-            }
-
-            // 3. تشغيل المؤقت للجميع في نفس اللحظة
-            if (data.timerStarted && !window.timerRunning) {
-                startCountdown(players);
-            }
-
-            // 4. عرض النتائج عند اكتمال القرعة
-            if (data.results) {
+        conn.on('data', (data) => {
+            if (data.type === 'JOIN') {
+                players[data.id] = { name: data.name, ready: false };
+                updateUI();
+                broadcast({ type: 'SYNC', players: players });
+            } else if (data.type === 'SYNC') {
+                players = data.players;
+                updateUI();
+                checkAllReady();
+            } else if (data.type === 'READY') {
+                if (players[data.id]) players[data.id].ready = true;
+                updateUI();
+                broadcast({ type: 'SYNC', players: players });
+                checkAllReady();
+            } else if (data.type === 'START_TIMER') {
+                startTimer();
+            } else if (data.type === 'RESULTS') {
                 showResults(data.results);
             }
         });
     }
 
-    function updateUI(players) {
+    function broadcast(data) {
+        connections.forEach(c => {
+            if (c.open) c.send(data);
+        });
+    }
+
+    function updateUI() {
         const ul = document.getElementById("p-list");
         ul.innerHTML = "";
         const keys = Object.keys(players);
@@ -194,15 +299,39 @@
         keys.forEach(k => {
             const p = players[k];
             const li = document.createElement("li");
-            li.innerHTML = `<span>${p.name}</span> <span class="tag ${p.ready ? 'ready' : ''}">${p.ready ? 'جاهز ✅' : 'ينتظر ⏳'}</span>`;
+            li.innerHTML = `<span>${p.name}</span> <span class="tag ${p.ready ? 'ready' : ''}">${p.ready ? 'جاهز 👑' : 'بانتظار الإشارة ⏳'}</span>`;
             ul.appendChild(li);
         });
     }
 
-    function startCountdown(players) {
-        window.timerRunning = true;
+    function sendReady() {
+        document.getElementById("ready-btn").disabled = true;
+        document.getElementById("ready-btn").innerText = "تم تأكيد الاستعداد 👍";
+        
+        if (players[peer.id]) players[peer.id].ready = true;
+        updateUI();
+
+        broadcast({ type: 'READY', id: peer.id });
+        checkAllReady();
+    }
+
+    function checkAllReady() {
+        const keys = Object.keys(players);
+        const allReady = keys.length >= 3 && keys.every(k => players[k].ready);
+
+        if (allReady) {
+            broadcast({ type: 'START_TIMER' });
+            startTimer();
+        }
+    }
+
+    let timerStarted = false;
+    function startTimer() {
+        if (timerStarted) return;
+        timerStarted = true;
+
         document.getElementById("timer-box").classList.remove("hidden");
-        let left = 30;
+        let left = 15;
 
         const interval = setInterval(() => {
             left--;
@@ -211,15 +340,14 @@
             if (left <= 0) {
                 clearInterval(interval);
                 
-                // أول لاعب في الغرفة يحسب القرعة العشوائية وينشرها للجميع
-                const playerKeys = Object.keys(players);
-                if (playerKeys[0] === myUserId) {
-                    const shuffled = playerKeys.map(k => players[k].name).sort(() => 0.5 - Math.random());
-                    roomRef.child('results').set({
-                        king: shuffled[0],
-                        victim: shuffled[1],
-                        witness: shuffled[2]
-                    });
+                const keys = Object.keys(players);
+                // رئيس المجلس يتكفل بإصدار الحكم
+                if (keys[0] === peer.id || peer.id === "vip_rulers_room_wadah_2026") {
+                    const shuffled = keys.map(k => players[k].name).sort(() => 0.5 - Math.random());
+                    const results = { king: shuffled[0], victim: shuffled[1], witness: shuffled[2] };
+                    
+                    broadcast({ type: 'RESULTS', results: results });
+                    showResults(results);
                 }
             }
         }, 1000);
@@ -232,12 +360,6 @@
         document.getElementById("r-king").innerText = results.king;
         document.getElementById("r-victim").innerText = results.victim;
         document.getElementById("r-witness").innerText = results.witness;
-    }
-
-    function resetRoom() {
-        roomRef.remove().then(() => {
-            location.reload();
-        });
     }
 </script>
 
