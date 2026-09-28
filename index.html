@@ -4,12 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مجلس الأحكام الملكي - VIP</title>
-    <!-- مكتبة الربط المباشر المحدثة -->
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
             --bg: #07050a;
-            --panel: rgba(23, 16, 38, 0.9);
+            --panel: rgba(23, 16, 38, 0.95);
             --gold: #f7d070;
             --gold-dark: #c8963e;
             --red: #ff2a5f;
@@ -88,12 +86,14 @@
             cursor: pointer; 
             box-shadow: 0 6px 20px rgba(247, 208, 112, 0.25); 
             transition: all 0.3s;
+            margin-top: 5px;
         }
         button.secondary {
             background: rgba(255, 255, 255, 0.08);
             color: #fff;
             border: 1px solid var(--border);
             box-shadow: none;
+            margin-top: 0;
         }
         button:disabled { background: #1e172e !important; color: #584b73 !important; box-shadow: none !important; cursor: not-allowed; }
 
@@ -122,19 +122,7 @@
         li { padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
         li:last-child { border: none; }
         
-        .tag { font-size: 11px; padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #888; }
-        .tag.ready { background: rgba(0, 240, 181, 0.15); color: var(--green); border: 1px solid rgba(0, 240, 181, 0.3); }
-
-        .timer-display { 
-            font-size: 18px; 
-            font-weight: 700; 
-            color: var(--gold); 
-            margin: 15px 0; 
-            background: rgba(247, 208, 112, 0.05); 
-            padding: 12px; 
-            border-radius: 14px; 
-            border: 1px dashed var(--gold); 
-        }
+        .tag { font-size: 11px; padding: 4px 10px; border-radius: 8px; background: rgba(0, 240, 181, 0.15); color: var(--green); border: 1px solid rgba(0, 240, 181, 0.3); }
 
         .res-card { 
             padding: 16px; 
@@ -159,7 +147,7 @@
 
 <div class="card">
     <h1>🏛️ مجلس الأحكام الملكي</h1>
-    <div class="subtitle">منصة الاقتراع والقرعة المباشرة</div>
+    <div class="subtitle">منصة الاقتراع والقرعة المباشرة عبر الدول</div>
 
     <!-- 1. شاشة الدخول والرمز -->
     <div id="sec-join">
@@ -181,16 +169,14 @@
         <div class="list-box">
             <div class="list-title">
                 <span>أعضاء المجلس الحاضرون:</span>
-                <b id="p-count">1</b>
+                <b id="p-count">0</b>
             </div>
             <ul id="p-list"></ul>
         </div>
 
-        <div id="timer-box" class="timer-display hidden">
-            ⏳ تنعقد القرعة خلال: <span id="sec">15</span> ثانية
-        </div>
-
-        <button id="ready-btn" onclick="sendReady()">أنا مستعد للانعقاد 👑</button>
+        <!-- زر خاص برئيس المجلس فقط لبدء القرعة -->
+        <button id="start-btn" onclick="startDraw()" class="hidden">بدء سحب القرعة 🎲</button>
+        <div id="waiting-msg" style="color:#8e83ab; font-size:14px; margin-top:10px;">بانتظار أن يبدأ رئيس المجلس القرعة... ⏳</div>
     </div>
 
     <!-- 3. شاشة إعلان الأحكام -->
@@ -206,175 +192,105 @@
 </div>
 
 <script>
-    let peer = null;
-    let connections = [];
+    let ws = null;
     let myName = "";
-    let players = {};
+    let roomCode = "";
     let isHost = false;
+    let players = [];
 
-    // سيرفرات خرق جدران الحماية للاتصال المباشر بين الجوالات عبر الإنترنت
-    const peerConfig = {
-        config: {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        }
-    };
+    function connectSocket(code, onOpenCallback) {
+        // استخدام سيرفر WebSocket عام ومفتوح للاتصال الدولي المباشر
+        const apiKey = "demo"; 
+        ws = new WebSocket(`wss://free.piesocket.com/v3/${code}?api_key=${apiKey}&notify_self=1`);
 
-    // 1. إنشاء غرفة جديدة (Host)
+        ws.onopen = () => {
+            if (onOpenCallback) onOpenCallback();
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'JOIN_REQ' && isHost) {
+                if (!players.includes(data.name)) players.push(data.name);
+                broadcast({ type: 'SYNC_PLAYERS', players: players });
+            } else if (data.type === 'SYNC_PLAYERS') {
+                players = data.players;
+                updateUI();
+            } else if (data.type === 'DRAW_RESULTS') {
+                showResults(data.results);
+            }
+        };
+
+        ws.onerror = () => {
+            alert("تعذر الاتصال بالسيرفر الدولي، حاول مرة أخرى.");
+        };
+    }
+
     function createRoom() {
         myName = document.getElementById("username").value.trim();
         if (!myName) return alert("يرجى إدخال اسمك الكريم أولاً!");
 
-        const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
-        const fullRoomId = "rulers_vip_room_" + randomCode;
-
+        roomCode = Math.floor(1000 + Math.random() * 9000).toString();
         isHost = true;
-        peer = new Peer(fullRoomId, peerConfig);
 
-        peer.on('open', () => {
+        connectSocket(roomCode, () => {
             document.getElementById("sec-join").classList.add("hidden");
             document.getElementById("sec-lobby").classList.remove("hidden");
-            document.getElementById("display-room-code").innerText = randomCode;
+            document.getElementById("display-room-code").innerText = roomCode;
+            document.getElementById("start-btn").classList.remove("hidden");
+            document.getElementById("waiting-msg").classList.add("hidden");
 
-            players[peer.id] = { name: myName, ready: false };
+            players.push(myName);
             updateUI();
-        });
-
-        peer.on('connection', (conn) => {
-            connections.push(conn);
-            conn.on('data', (data) => handleData(data, conn));
-        });
-
-        peer.on('error', (err) => {
-            alert("حدث خطأ في إنشاء المجلس، حاول مرة أخرى.");
-            location.reload();
         });
     }
 
-    // 2. الانضمام إلى غرفة موجودة بالرمز
     function joinRoom() {
         myName = document.getElementById("username").value.trim();
-        const code = document.getElementById("room-code-input").value.trim();
+        roomCode = document.getElementById("room-code-input").value.trim();
 
         if (!myName) return alert("يرجى إدخال اسمك الكريم!");
-        if (!code) return alert("يرجى كتابة رمز المجلس للاندماج!");
+        if (!roomCode) return alert("يرجى كتابة رمز المجلس للاندماج!");
 
-        const fullRoomId = "rulers_vip_room_" + code;
-        peer = new Peer(peerConfig);
+        connectSocket(roomCode, () => {
+            document.getElementById("sec-join").classList.add("hidden");
+            document.getElementById("sec-lobby").classList.remove("hidden");
+            document.getElementById("display-room-code").innerText = roomCode;
 
-        peer.on('open', (id) => {
-            const conn = peer.connect(fullRoomId);
-
-            conn.on('open', () => {
-                connections.push(conn);
-                document.getElementById("sec-join").classList.add("hidden");
-                document.getElementById("sec-lobby").classList.remove("hidden");
-                document.getElementById("display-room-code").innerText = code;
-
-                conn.send({ type: 'JOIN', name: myName, id: id });
-            });
-
-            conn.on('data', (data) => handleData(data, conn));
-
-            conn.on('error', () => {
-                alert("تعذر العثور على المجلس، تأكد من الرمز!");
-            });
+            // إرسال طلب انضمام لرئيس المجلس
+            setTimeout(() => {
+                broadcast({ type: 'JOIN_REQ', name: myName });
+            }, 500);
         });
-    }
-
-    // إدارة البيانات والتزامن بين الجوالات
-    function handleData(data, conn) {
-        if (data.type === 'JOIN' && isHost) {
-            players[data.id] = { name: data.name, ready: false };
-            updateUI();
-            broadcast({ type: 'SYNC', players: players });
-        } else if (data.type === 'SYNC') {
-            players = data.players;
-            updateUI();
-        } else if (data.type === 'READY') {
-            if (players[data.id]) players[data.id].ready = true;
-            updateUI();
-            if (isHost) {
-                broadcast({ type: 'SYNC', players: players });
-                checkStartGame();
-            }
-        } else if (data.type === 'START_TIMER') {
-            startTimer();
-        } else if (data.type === 'RESULTS') {
-            showResults(data.results);
-        }
     }
 
     function broadcast(data) {
-        connections.forEach(c => {
-            if (c.open) c.send(data);
-        });
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(data));
+        }
     }
 
     function updateUI() {
         const ul = document.getElementById("p-list");
         ul.innerHTML = "";
-        const keys = Object.keys(players);
-        document.getElementById("p-count").innerText = keys.length;
+        document.getElementById("p-count").innerText = players.length;
 
-        keys.forEach(k => {
-            const p = players[k];
+        players.forEach(p => {
             const li = document.createElement("li");
-            li.innerHTML = `<span>${p.name}</span> <span class="tag ${p.ready ? 'ready' : ''}">${p.ready ? 'جاهز 👑' : 'بانتظار الإشارة ⏳'}</span>`;
+            li.innerHTML = `<span>${p}</span> <span class="tag">متصل 👑</span>`;
             ul.appendChild(li);
         });
     }
 
-    function sendReady() {
-        document.getElementById("ready-btn").disabled = true;
-        document.getElementById("ready-btn").innerText = "تم تأكيد الاستعداد 👍";
-
-        if (isHost) {
-            players[peer.id].ready = true;
-            updateUI();
-            broadcast({ type: 'SYNC', players: players });
-            checkStartGame();
-        } else {
-            connections[0].send({ type: 'READY', id: peer.id });
+    function startDraw() {
+        if (players.length < 3) {
+            return alert("يجب أن يكون عدد الحاضرين 3 لاعبين على الأقل لبدء القرعة!");
         }
-    }
 
-    function checkStartGame() {
-        const keys = Object.keys(players);
-        const allReady = keys.length >= 3 && keys.every(k => players[k].ready);
+        const shuffled = [...players].sort(() => 0.5 - Math.random());
+        const results = { king: shuffled[0], victim: shuffled[1], witness: shuffled[2] };
 
-        if (allReady && isHost) {
-            broadcast({ type: 'START_TIMER' });
-            startTimer();
-        }
-    }
-
-    let timerStarted = false;
-    function startTimer() {
-        if (timerStarted) return;
-        timerStarted = true;
-
-        document.getElementById("timer-box").classList.remove("hidden");
-        let left = 15;
-
-        const interval = setInterval(() => {
-            left--;
-            document.getElementById("sec").innerText = left;
-
-            if (left <= 0) {
-                clearInterval(interval);
-                if (isHost) {
-                    const keys = Object.keys(players);
-                    const shuffled = keys.map(k => players[k].name).sort(() => 0.5 - Math.random());
-                    const results = { king: shuffled[0], victim: shuffled[1], witness: shuffled[2] };
-
-                    broadcast({ type: 'RESULTS', results: results });
-                    showResults(results);
-                }
-            }
-        }, 1000);
+        broadcast({ type: 'DRAW_RESULTS', results: results });
     }
 
     function showResults(results) {
