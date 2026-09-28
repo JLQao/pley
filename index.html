@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مجلس الأحكام الملكي - VIP</title>
+    <!-- مكتبة قاعدة البيانات السحابية العالمية المضمونة (PubNub) -->
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
     <style>
         :root {
             --bg: #07050a;
@@ -192,82 +194,86 @@
 </div>
 
 <script>
-    let ws = null;
+    // تهيئة الاتصال بقاعدة البيانات السحابية (نفس التي اشتغلت معك بنجاح أول مرة)
+    const pubnub = new PubNub({
+        subscribeKey: "sub-c-43a02a22-220d-11e7-9d7a-02ee2ddab7fe",
+        publishKey: "pub-c-6744f4d2-d1e9-4e4c-882f-bf2a9d821e2c",
+        uuid: "user_" + Math.random().toString(36).substring(2, 9)
+    });
+
     let myName = "";
-    let roomCode = "";
+    let roomChannel = "";
     let isHost = false;
     let players = [];
 
-    function connectSocket(code, onOpenCallback) {
-        // استخدام سيرفر WebSocket عام ومفتوح للاتصال الدولي المباشر
-        const apiKey = "demo"; 
-        ws = new WebSocket(`wss://free.piesocket.com/v3/${code}?api_key=${apiKey}&notify_self=1`);
+    // مراقبة قاعدة البيانات لحظياً
+    pubnub.addListener({
+        message: (event) => {
+            const data = event.message;
 
-        ws.onopen = () => {
-            if (onOpenCallback) onOpenCallback();
-        };
-
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-
+            // إذا دخل شخص جديد والرئيس موجود
             if (data.type === 'JOIN_REQ' && isHost) {
-                if (!players.includes(data.name)) players.push(data.name);
-                broadcast({ type: 'SYNC_PLAYERS', players: players });
-            } else if (data.type === 'SYNC_PLAYERS') {
+                if (!players.includes(data.name)) {
+                    players.push(data.name);
+                }
+                updateUI();
+                // الرئيس يرسل القائمة المحدثة للجميع
+                pubnub.publish({ channel: roomChannel, message: { type: 'SYNC_PLAYERS', players: players } });
+            } 
+            // استقبال القائمة المحدثة (للأعضاء)
+            else if (data.type === 'SYNC_PLAYERS') {
                 players = data.players;
                 updateUI();
-            } else if (data.type === 'DRAW_RESULTS') {
+            } 
+            // استقبال نتيجة القرعة
+            else if (data.type === 'DRAW_RESULTS') {
                 showResults(data.results);
             }
-        };
-
-        ws.onerror = () => {
-            alert("تعذر الاتصال بالسيرفر الدولي، حاول مرة أخرى.");
-        };
-    }
+        }
+    });
 
     function createRoom() {
         myName = document.getElementById("username").value.trim();
         if (!myName) return alert("يرجى إدخال اسمك الكريم أولاً!");
 
-        roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+        const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+        roomChannel = "vip_room_" + randomCode;
         isHost = true;
 
-        connectSocket(roomCode, () => {
-            document.getElementById("sec-join").classList.add("hidden");
-            document.getElementById("sec-lobby").classList.remove("hidden");
-            document.getElementById("display-room-code").innerText = roomCode;
-            document.getElementById("start-btn").classList.remove("hidden");
-            document.getElementById("waiting-msg").classList.add("hidden");
+        // الاشتراك في القناة السحابية
+        pubnub.subscribe({ channels: [roomChannel] });
 
-            players.push(myName);
-            updateUI();
-        });
+        document.getElementById("sec-join").classList.add("hidden");
+        document.getElementById("sec-lobby").classList.remove("hidden");
+        document.getElementById("display-room-code").innerText = randomCode;
+        document.getElementById("start-btn").classList.remove("hidden");
+        document.getElementById("waiting-msg").classList.add("hidden");
+
+        // إضافة الرئيس للقائمة
+        players.push(myName);
+        updateUI();
     }
 
     function joinRoom() {
         myName = document.getElementById("username").value.trim();
-        roomCode = document.getElementById("room-code-input").value.trim();
+        const code = document.getElementById("room-code-input").value.trim();
 
         if (!myName) return alert("يرجى إدخال اسمك الكريم!");
-        if (!roomCode) return alert("يرجى كتابة رمز المجلس للاندماج!");
+        if (!code) return alert("يرجى كتابة رمز المجلس للانضمام!");
 
-        connectSocket(roomCode, () => {
-            document.getElementById("sec-join").classList.add("hidden");
-            document.getElementById("sec-lobby").classList.remove("hidden");
-            document.getElementById("display-room-code").innerText = roomCode;
+        roomChannel = "vip_room_" + code;
+        
+        // الاشتراك في القناة السحابية
+        pubnub.subscribe({ channels: [roomChannel] });
 
-            // إرسال طلب انضمام لرئيس المجلس
-            setTimeout(() => {
-                broadcast({ type: 'JOIN_REQ', name: myName });
-            }, 500);
-        });
-    }
+        document.getElementById("sec-join").classList.add("hidden");
+        document.getElementById("sec-lobby").classList.remove("hidden");
+        document.getElementById("display-room-code").innerText = code;
 
-    function broadcast(data) {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(data));
-        }
+        // إرسال الاسم لقاعدة البيانات ليضيفه الرئيس
+        setTimeout(() => {
+            pubnub.publish({ channel: roomChannel, message: { type: 'JOIN_REQ', name: myName } });
+        }, 800);
     }
 
     function updateUI() {
@@ -287,10 +293,12 @@
             return alert("يجب أن يكون عدد الحاضرين 3 لاعبين على الأقل لبدء القرعة!");
         }
 
+        // عشوائية الأسماء
         const shuffled = [...players].sort(() => 0.5 - Math.random());
         const results = { king: shuffled[0], victim: shuffled[1], witness: shuffled[2] };
 
-        broadcast({ type: 'DRAW_RESULTS', results: results });
+        // إرسال النتيجة عبر قاعدة البيانات
+        pubnub.publish({ channel: roomChannel, message: { type: 'DRAW_RESULTS', results: results } });
     }
 
     function showResults(results) {
