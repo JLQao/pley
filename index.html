@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة الأحكام الفخمة</title>
+    <!-- تضمين مكتبة المزامنة اللحظية عبر الإنترنت -->
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
+    <style>
+        :root {
+            --primary: #ff0055;
+            --accent: #00f0ff;
+            --gold: #ffbe0b;
+            --bg: #0b0c10;
+            --card-bg: #1f2833;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; transition: all 0.3s ease; }
+        body { background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; }
+        
+        .container { background: var(--card-bg); border: 2px solid #333; border-radius: 20px; padding: 30px; width: 100%; max-width: 480px; text-align: center; box-shadow: 0 0 30px rgba(255, 0, 85, 0.15); position: relative; overflow: hidden; }
+        .container::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,0,85,0.05) 0%, transparent 70%); pointer-events: none; }
+        
+        h1 { color: #fff; text-shadow: 0 0 10px var(--primary); margin-bottom: 5px; font-size: 28px; }
+        .subtitle { color: #888; font-size: 14px; margin-bottom: 25px; }
+
+        input { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; border: 1px solid #444; background: #0b0c10; color: #fff; font-size: 16px; text-align: center; outline: none; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(255, 0, 85, 0.3); }
+
+        button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; border: none; background: linear-gradient(45deg, var(--primary), #ff5000); color: white; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 0, 85, 0.4); }
+        button:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 0, 85, 0.6); }
+
+        .players-box { background: #0b0c10; border-radius: 12px; padding: 15px; margin: 15px 0; border: 1px solid #222; }
+        ul { list-style: none; padding: 0; margin: 0; max-height: 160px; overflow-y: auto; }
+        li { padding: 10px; border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
+        li:last-child { border: none; }
+        .badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; background: #222; }
+        .badge.ready { background: #00b4d8; color: #fff; }
+
+        .timer-box { font-size: 22px; color: var(--gold); font-weight: bold; margin: 15px 0; text-shadow: 0 0 8px rgba(255, 190, 11, 0.4); }
+        
+        .role-card { margin: 12px 0; padding: 15px; border-radius: 12px; font-size: 18px; font-weight: bold; text-align: right; display: flex; justify-content: space-between; align-items: center; }
+        .r-king { background: linear-gradient(90deg, #ffbe0b, #fb5607); color: #000; }
+        .r-victim { background: linear-gradient(90deg, #ff0055, #ff5000); color: #fff; }
+        .r-witness { background: linear-gradient(90deg, #00f0ff, #0077b6); color: #000; }
+
+        .copyright { margin-top: 25px; font-size: 13px; color: #666; border-top: 1px solid #222; padding-top: 15px; }
+        .copyright span { color: var(--accent); font-weight: bold; }
+        
+        .hidden { display: none; }
+        .roulette-anim { animation: pulse 0.5s infinite alternate; color: var(--accent); }
+        @keyframes pulse { from { opacity: 0.3; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎲 لعبة الأحكام</h1>
+    <div class="subtitle">غرفة اللعب الجماعية المباشرة</div>
+
+    <!-- شاشة الانضمام -->
+    <div id="sec-login">
+        <input type="text" id="username" placeholder="أدخل اسمك الفخم هنا..." maxlength="15">
+        <button onclick="joinRoom()">انضمام إلى الغرفة</button>
+    </div>
+
+    <!-- شاشة الانتظار -->
+    <div id="sec-lobby" class="hidden">
+        <div class="players-box">
+            <div style="margin-bottom: 10px; color: #aaa;">اللاعبون المتصلون (<span id="count">0</span>)</div>
+            <ul id="players-list"></ul>
+        </div>
+        
+        <div id="timer-display" class="timer-box hidden">
+            ⏳ جاري القرعة خلال: <span id="seconds">30</span> ثانية
+        </div>
+
+        <button id="ready-btn" onclick="sendReady()">أنا مستعد للبدء 👍</button>
+    </div>
+
+    <!-- شاشة النتائج -->
+    <div id="sec-result" class="hidden">
+        <h2 id="roulette-status" class="roulette-anim">🔥 جاري سحب القرعة... 🔥</h2>
+        <div id="roles-display" class="hidden">
+            <div class="role-card r-king"><span>👑 الحاكم:</span> <span id="res-king">-</span></div>
+            <div class="role-card r-victim"><span>🎯 المحكوم عليه:</span> <span id="res-victim">-</span></div>
+            <div class="role-card r-witness"><span>👁️ الشاهد:</span> <span id="res-witness">-</span></div>
+        </div>
+        <button onclick="restartGame()" style="margin-top:20px;">جولة جديدة 🔄</button>
+    </div>
+
+    <!-- حقوق الملكية -->
+    <div class="copyright">
+        حقوق اللعبة محفوظة لـ <span>وضاح </span> © 2026
+    </div>
+</div>
+
+<script>
+    // الاتصال بالسيرفر العام المشترك
+    const pubnub = new PubNub({
+        subscribeKey: "sub-c-43a02a22-220d-11e7-9d7a-02ee2ddab7fe",
+        publishKey: "pub-c-6744f4d2-d1e9-4e4c-882f-bf2a9d821e2c",
+        uuid: "user_" + Math.random().toString(36).substring(2, 9)
+    });
+
+    const roomChannel = "rulers_game_room_2026";
+    let myName = "";
+    let players = {};
+    let isHost = false;
+
+    pubnub.subscribe({ channels: [roomChannel] });
+
+    pubnub.addListener({
+        message: (event) => {
+            const msg = event.message;
+            if (msg.type === "JOIN") {
+                players[msg.user] = { ready: false };
+                updateList();
+            } else if (msg.type === "READY") {
+                if (players[msg.user]) players[msg.user].ready = true;
+                updateList();
+                checkStartTimer();
+            } else if (msg.type === "START_TIMER") {
+                runTimer();
+            } else if (msg.type === "DRAW_RESULTS") {
+                showFinalResults(msg.results);
+            }
+        }
+    });
+
+    function joinRoom() {
+        const input = document.getElementById("username");
+        myName = input.value.trim();
+        if (!myName) return alert("يرجى كتابة الاسم أولاً!");
+
+        document.getElementById("sec-login").classList.add("hidden");
+        document.getElementById("sec-lobby").classList.remove("hidden");
+
+        pubnub.publish({
+            channel: roomChannel,
+            message: { type: "JOIN", user: myName }
+        });
+    }
+
+    function updateList() {
+        const listEl = document.getElementById("players-list");
+        listEl.innerHTML = "";
+        const keys = Object.keys(players);
+        document.getElementById("count").innerText = keys.length;
+
+        keys.forEach(p => {
+            const li = document.createElement("li");
+            const isReady = players[p].ready;
+            li.innerHTML = `<span>${p}</span> <span class="badge ${isReady ? 'ready' : ''}">${isReady ? 'جاهز ✅' : 'ينتظر ⏳'}</span>`;
+            listEl.appendChild(li);
+        });
+    }
+
+    function sendReady() {
+        document.getElementById("ready-btn").disabled = true;
+        document.getElementById("ready-btn").innerText = "بانتظار موافقة البقية...";
+        
+        pubnub.publish({
+            channel: roomChannel,
+            message: { type: "READY", user: myName }
+        });
+    }
+
+    function checkStartTimer() {
+        const keys = Object.keys(players);
+        const allReady = keys.length >= 3 && keys.every(k => players[k].ready);
+        
+        // أول شخص ينضم يعتبر الآمر بالبدء لضمان تزامن العد التنازلي
+        if (allReady && keys[0] === myName) {
+            pubnub.publish({
+                channel: roomChannel,
+                message: { type: "START_TIMER" }
+            });
+        }
+    }
+
+    let timerRunning = false;
+    function runTimer() {
+        if (timerRunning) return;
+        timerRunning = true;
+
+        document.getElementById("timer-display").classList.remove("hidden");
+        let left = 30;
+
+        const interval = setInterval(() => {
+            left--;
+            document.getElementById("seconds").innerText = left;
+
+            if (left <= 0) {
+                clearInterval(interval);
+                document.getElementById("sec-lobby").classList.add("hidden");
+                document.getElementById("sec-result").classList.remove("hidden");
+
+                // الشخص الأول بالانتظار يقوم بحساب القرعة وإرسالها للكل
+                const keys = Object.keys(players);
+                if (keys[0] === myName) {
+                    const shuffled = [...keys].sort(() => 0.5 - Math.random());
+                    pubnub.publish({
+                        channel: roomChannel,
+                        message: {
+                            type: "DRAW_RESULTS",
+                            results: { king: shuffled[0], victim: shuffled[1], witness: shuffled[2] }
+                        }
+                    });
+                }
+            }
+        }, 1000);
+    }
+
+    function showFinalResults(res) {
+        setTimeout(() => {
+            document.getElementById("roulette-status").classList.add("hidden");
+            document.getElementById("roles-display").classList.remove("hidden");
+
+            document.getElementById("res-king").innerText = res.king;
+            document.getElementById("res-victim").innerText = res.victim;
+            document.getElementById("res-witness").innerText = res.witness;
+        }, 1500); // تأثير حركة التأخير للتشويق
+    }
+
+    function restartGame() {
+        location.reload();
+    }
+</script>
+
+</body>
+</html>
