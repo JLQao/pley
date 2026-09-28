@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لعبة الأحكام - VIP</title>
-    <!-- مكتبة السيرفر المباشر الشغال 100% -->
-    <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
+    <!-- مكتبة سيرفرات جوجل المباشرة للربط اللحظي -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         :root {
             --bg: #0d0914;
@@ -97,28 +98,34 @@
         <div class="res-card king"><span>👑 الحاكم:</span> <span id="r-king">-</span></div>
         <div class="res-card victim"><span>🎯 المحكوم عليه:</span> <span id="r-victim">-</span></div>
         <div class="res-card witness"><span>👁️ الشاهد:</span> <span id="r-witness">-</span></div>
-        <button onclick="location.reload()" style="margin-top:15px;">جولة جديدة 🔄</button>
+        <button onclick="resetRoom()" style="margin-top:15px;">جولة جديدة 🔄</button>
     </div>
 
     <div class="footer">حقوق اللعبة محفوظة لـ <b>وضاح</b> © 2026</div>
 </div>
 
 <script>
-    // سيرفر Scaledrone المباشر والسريع جداً
-    const CHANNEL_ID = 'yj5y83gS5S8uJ6Qd'; 
-    let drone = null;
-    let room = null;
+    // إعدادات خادم Firebase للربط المباشر المضمون
+    const firebaseConfig = {
+        databaseURL: "https://rulers-game-default-rtdb.firebaseio.com"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const roomRef = db.ref('game_room');
+
+    let myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
     let myName = "";
-    let membersList = {};
+    let isConnected = false;
 
-    // 1. الاتصال المباشر بالسيرفر
-    drone = new Scaledrone(CHANNEL_ID);
-
-    drone.on('open', error => {
-        if (error) return console.error(error);
-        document.getElementById("net-dot").classList.add("online");
-        document.getElementById("net-text").innerText = "متصل بالسيرفر المباشر ✅";
-        document.getElementById("join-btn").disabled = false;
+    // الاتصال الفوري بالسيرفر
+    db.ref('.info/connected').on('value', (snap) => {
+        if (snap.val() === true) {
+            isConnected = true;
+            document.getElementById("net-dot").classList.add("online");
+            document.getElementById("net-text").innerText = "متصل بالسيرفر المباشر ✅";
+            document.getElementById("join-btn").disabled = false;
+        }
     });
 
     function joinGame() {
@@ -128,125 +135,109 @@
         document.getElementById("sec-join").classList.add("hidden");
         document.getElementById("sec-lobby").classList.remove("hidden");
 
-        // الاشتراك في الغرفة العامة
-        room = drone.subscribe('observable-rulers-room');
-
-        room.on('open', error => {
-            if (error) console.error(error);
+        // تسجيل البيانات في السيرفر
+        const userRef = roomRef.child('players/' + myUserId);
+        userRef.set({
+            name: myName,
+            ready: false
         });
 
-        // قائمة المتواجدين الحالية
-        room.on('members', members => {
-            members.forEach(m => {
-                if (m.clientData) membersList[m.id] = m.clientData;
-            });
-            // إضافة نفسي
-            drone.publish({
-                room: 'observable-rulers-room',
-                message: { type: 'JOIN', name: myName }
-            });
-        });
+        // حذف اللاعب تلقائياً عند إغلاق الصفحة
+        userRef.onDisconnect().remove();
 
-        // عند دخول شخص جديد
-        room.on('member_join', member => {
-            // إرسال بياني له
-            drone.publish({
-                room: 'observable-rulers-room',
-                message: { type: 'SYNC', name: myName }
-            });
-        });
-
-        // الاستماع للرسائل بين الجوالات
-        room.on('data', (data, member) => {
-            if (data.type === 'JOIN' || data.type === 'SYNC') {
-                membersList[member.id] = { name: data.name, ready: false };
-                updateUI();
-            } else if (data.type === 'READY') {
-                if (membersList[member.id]) membersList[member.id].ready = true;
-                updateUI();
-                checkAllReady();
-            } else if (data.type === 'START_TIMER') {
-                startCountdown();
-            } else if (data.type === 'WINNERS') {
-                showResults(data.roles);
-            }
-        });
-    }
-
-    function updateUI() {
-        const ul = document.getElementById("p-list");
-        ul.innerHTML = "";
-        const keys = Object.keys(membersList);
-        document.getElementById("p-count").innerText = keys.length;
-
-        keys.forEach(k => {
-            const m = membersList[k];
-            const li = document.createElement("li");
-            li.innerHTML = `<span>${m.name}</span> <span class="tag ${m.ready ? 'ready' : ''}">${m.ready ? 'جاهز ✅' : 'ينتظر ⏳'}</span>`;
-            ul.appendChild(li);
-        });
+        // الاستماع للتغييرات الفورية للجميع
+        listenToRoom();
     }
 
     function markReady() {
         document.getElementById("ready-btn").disabled = true;
         document.getElementById("ready-btn").innerText = "بانتظار موافقة البقية...";
-        drone.publish({
-            room: 'observable-rulers-room',
-            message: { type: 'READY' }
+        roomRef.child('players/' + myUserId + '/ready').set(true);
+    }
+
+    function listenToRoom() {
+        roomRef.on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            const players = data.players || {};
+            
+            // 1. تحديث قائمة الأسماء في الواجهة
+            updateUI(players);
+
+            // 2. فحص جاهزية الجميع والبدء التلقائي للعد التنازلي
+            const playerKeys = Object.keys(players);
+            const allReady = playerKeys.length >= 3 && playerKeys.every(k => players[k].ready);
+
+            if (allReady && !data.timerStarted) {
+                if (playerKeys[0] === myUserId) {
+                    roomRef.child('timerStarted').set(true);
+                }
+            }
+
+            // 3. تشغيل المؤقت للجميع في نفس اللحظة
+            if (data.timerStarted && !window.timerRunning) {
+                startCountdown(players);
+            }
+
+            // 4. عرض النتائج عند اكتمال القرعة
+            if (data.results) {
+                showResults(data.results);
+            }
         });
     }
 
-    function checkAllReady() {
-        const keys = Object.keys(membersList);
-        const allReady = keys.length >= 3 && keys.every(k => membersList[k].ready);
-        
-        // الأبكر يقوم بإرسال أمر بدء التنازلي للجميع
-        if (allReady && keys[0] === drone.clientId) {
-            drone.publish({
-                room: 'observable-rulers-room',
-                message: { type: 'START_TIMER' }
-            });
-        }
+    function updateUI(players) {
+        const ul = document.getElementById("p-list");
+        ul.innerHTML = "";
+        const keys = Object.keys(players);
+        document.getElementById("p-count").innerText = keys.length;
+
+        keys.forEach(k => {
+            const p = players[k];
+            const li = document.createElement("li");
+            li.innerHTML = `<span>${p.name}</span> <span class="tag ${p.ready ? 'ready' : ''}">${p.ready ? 'جاهز ✅' : 'ينتظر ⏳'}</span>`;
+            ul.appendChild(li);
+        });
     }
 
-    let timerStarted = false;
-    function startCountdown() {
-        if (timerStarted) return;
-        timerStarted = true;
-
+    function startCountdown(players) {
+        window.timerRunning = true;
         document.getElementById("timer-box").classList.remove("hidden");
         let left = 30;
 
-        const t = setInterval(() => {
+        const interval = setInterval(() => {
             left--;
             document.getElementById("sec").innerText = left;
 
             if (left <= 0) {
-                clearInterval(t);
+                clearInterval(interval);
                 
-                // حساب القرعة وإرسال النتائج
-                const keys = Object.keys(membersList);
-                if (keys[0] === drone.clientId) {
-                    const shuffled = keys.map(k => membersList[k].name).sort(() => 0.5 - Math.random());
-                    drone.publish({
-                        room: 'observable-rulers-room',
-                        message: {
-                            type: 'WINNERS',
-                            roles: { king: shuffled[0], victim: shuffled[1], witness: shuffled[2] }
-                        }
+                // أول لاعب في الغرفة يحسب القرعة العشوائية وينشرها للجميع
+                const playerKeys = Object.keys(players);
+                if (playerKeys[0] === myUserId) {
+                    const shuffled = playerKeys.map(k => players[k].name).sort(() => 0.5 - Math.random());
+                    roomRef.child('results').set({
+                        king: shuffled[0],
+                        victim: shuffled[1],
+                        witness: shuffled[2]
                     });
                 }
             }
         }, 1000);
     }
 
-    function showResults(roles) {
+    function showResults(results) {
         document.getElementById("sec-lobby").classList.add("hidden");
         document.getElementById("sec-result").classList.remove("hidden");
 
-        document.getElementById("r-king").innerText = roles.king;
-        document.getElementById("r-victim").innerText = roles.victim;
-        document.getElementById("r-witness").innerText = roles.witness;
+        document.getElementById("r-king").innerText = results.king;
+        document.getElementById("r-victim").innerText = results.victim;
+        document.getElementById("r-witness").innerText = results.witness;
+    }
+
+    function resetRoom() {
+        roomRef.remove().then(() => {
+            location.reload();
+        });
     }
 </script>
 
