@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مجلس الأحكام الملكي - VIP</title>
-    <!-- مكتبة Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
     <style>
         :root {
@@ -76,13 +75,13 @@
     <h1>🏛️ مجلس الأحكام الملكي</h1>
     <div class="subtitle" id="welcome-msg">منصة الاقتراع والقرعة المباشرة عبر الدول</div>
 
-    <!-- 0. واجهة إنشاء الحساب الدائمة (تظهر لمرة واحدة فقط) -->
+    <!-- 0. واجهة إنشاء الحساب (تظهر مرة واحدة) -->
     <div id="sec-register" class="hidden">
         <h3 style="color:var(--gold); margin-bottom:12px; font-size:18px;">إنشاء حساب الحاكم</h3>
         <p style="color:#a497c6; font-size:13px; margin-bottom:15px;">أنشئ هويتك مرة واحدة وللأبد للمشاركة في المجالس:</p>
         <input type="text" id="reg-name" placeholder="اسمك الكريم (عربي أو إنجليزي)..." maxlength="20">
-        <input type="text" id="reg-username" placeholder="يوزر الحساب (إنجليزية فقط مثل: @zack)..." maxlength="20" style="text-transform: lowercase;">
-        <button onclick="createAccount()">تسجيل الحساب ودخول 🚀</button>
+        <input type="text" id="reg-username" placeholder="يوزر الحساب (إنجليزية مثل: @zack)..." maxlength="20" style="text-transform: lowercase;">
+        <button id="btn-create-acc" onclick="createAccount()">تسجيل الحساب ودخول 🚀</button>
     </div>
 
     <!-- 1. واجهة الغرف والمجالس المتاحة -->
@@ -92,7 +91,7 @@
         <div class="list-box">
             <div class="list-title">
                 <span>المجالس المتاحة حالياً 🌐</span>
-                <span style="font-size: 10px; color: #8e83ab;">تحذف بعد 5 ساعات</span>
+                <span style="font-size: 10px; color: #8e83ab;">تحذف بعد 30 دقيقة</span>
             </div>
             <ul id="public-rooms-list">
                 <li style="color:#665b85; justify-content:center;">جاري البحث عن المجالس...</li>
@@ -111,7 +110,7 @@
             <ul id="p-list"></ul>
         </div>
         <button id="start-btn" onclick="startDraw()" class="hidden">بدء سحب القرعة 🎲</button>
-        <button id="close-room-btn" onclick="destroyRoom()" class="danger hidden" style="margin-top:10px;">إغلاق وتدمير المجلس 🚫</button>
+        <button id="close-room-btn" onclick="destroyRoom()" class="danger hidden" style="margin-top:10px;">إغلاق وتدمير المجلس نهائياً 🚫</button>
         <button onclick="leaveRoom()" class="secondary" style="margin-top:8px;">مغادرة المجلس 🚪</button>
         <div id="waiting-msg" style="color:#8e83ab; font-size:14px; margin-top:15px;">بانتظار أن يبدأ رئيس المجلس القرعة... ⏳</div>
     </div>
@@ -194,7 +193,7 @@
     const supabaseKey = 'sb_publishable_VriM1ecC1V0FazJXEqXirA_4L77MTBX';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
+    const THIRTY_MINUTES_MS = 30 * 60 * 1000; // مدة المجلس أصبحت نصف ساعة فقط
     
     let myName = "";
     let myUsername = "";
@@ -202,7 +201,6 @@
     let currentRoomData = null;
     let roomSubscription = null;
 
-    // فحص الحساب المسجل مسبقاً عند فتح الصفحة أو تحديثها
     function init() {
         const savedName = localStorage.getItem('royal_name');
         const savedUser = localStorage.getItem('royal_username');
@@ -214,7 +212,6 @@
             document.getElementById("welcome-msg").innerText = `مرحباً بك يا ${myName} 👑`;
 
             if (savedRoom) {
-                // إذا كان المستخدم محتجزاً داخل مجلس عند تحديث الصفحة، نعيده له فوراً
                 roomId = savedRoom;
                 reconnectToRoom();
             } else {
@@ -225,30 +222,57 @@
         }
     }
 
-    // إنشاء حساب دائم جديد
-    function createAccount() {
+    // إنشاء حساب مع التحقق من عدم تكرار اليوزر في قاعدة البيانات
+    async function createAccount() {
         const nameInput = document.getElementById("reg-name").value.trim();
-        const userቃልInput = document.getElementById("reg-username").value.trim().toLowerCase();
+        let rawUser = document.getElementById("reg-username").value.trim().toLowerCase();
 
         if(!nameInput) return alert("الرجاء إدخال اسمك الكريم!");
-        if(!userቃልInput) return alert("الرجاء إدخال يوزر باللغة الإنجليزية!");
+        if(!rawUser) return alert("الرجاء إدخال يوزر باللغة الإنجليزية!");
         
-        // التحقق من أن اليوزر إنجليزي وخالٍ من المسافات
         const engRegex = /^[a-zA-Z0-9_]+$/;
-        if(!engRegex.test(userቃልInput)) return alert("يوزر الانستغرام/الحساب يجب أن يكون باللغة الإنجليزية وبدون مسافات أو رموز عربية!");
+        if(!engRegex.test(rawUser)) return alert("يوزر الحساب يجب أن يكون باللغة الإنجليزية وبدون مسافات أو رموز عربية!");
 
-        localStorage.setItem('royal_name', nameInput);
-        localStorage.setItem('royal_username', '@' + userቃልInput.replace('@',''));
+        const formattedUser = '@' + rawUser.replace('@','');
+        const fullProfileName = `${nameInput} (${formattedUser})`;
 
-        myName = `${nameInput} (${localStorage.getItem('royal_username')})`;
-        myUsername = localStorage.getItem('royal_username');
+        const btn = document.getElementById("btn-create-acc");
+        btn.disabled = true;
+        btn.innerText = "جاري التحقق من اليوزر...";
 
-        document.getElementById("welcome-msg").innerText = `مرحباً بك يا ${myName} 👑`;
+        try {
+            // التحقق من قاعدة البيانات هل اليوزر مستخدم من قبل؟
+            const { data: existingUsers } = await supabase.from('users').select('*');
+            
+            let isTaken = false;
+            if(existingUsers) {
+                isTaken = existingUsers.some(u => u.username && u.username.includes(formattedUser));
+            }
 
-        // حفظ الحساب في قاعدة البيانات بصمت
-        supabase.from('users').upsert([{ username: myName }], { onConflict: 'username' }).then().catch(()=>{});
+            if(isTaken) {
+                alert(`⚠️ عذراً، اليوزر (${formattedUser}) مستخدم من قبل شخص آخر! يرجى اختيار يوزر غيره.`);
+                btn.disabled = false;
+                btn.innerText = "تسجيل الحساب ودخول 🚀";
+                return;
+            }
 
-        loadPublicRooms();
+            // إذا كان اليوزر متاحاً، يتم حفظه محلياً وفي القاعدة
+            localStorage.setItem('royal_name', nameInput);
+            localStorage.setItem('royal_username', formattedUser);
+
+            myName = fullProfileName;
+            myUsername = formattedUser;
+
+            document.getElementById("welcome-msg").innerText = `مرحباً بك يا ${myName} 👑`;
+
+            await supabase.from('users').upsert([{ username: myName, wins: 0 }], { onConflict: 'username' });
+
+            loadPublicRooms();
+        } catch(e) {
+            alert("حدث خطأ في الاتصال بقاعدة البيانات. حاول مجدداً.");
+            btn.disabled = false;
+            btn.innerText = "تسجيل الحساب ودخول 🚀";
+        }
     }
 
     function logoutAccount() {
@@ -259,7 +283,7 @@
     }
 
     function loadPublicRooms() {
-        localStorage.removeItem('royal_room'); // إزالة الغرفة لأنه في الشاشة الرئيسية
+        localStorage.removeItem('royal_room');
         showScreen('sec-join');
         fetchRooms();
         
@@ -281,7 +305,8 @@
 
             if(rooms && rooms.length > 0) {
                 rooms.forEach(room => {
-                    if (now - room.created_at < FIVE_HOURS_MS) {
+                    // التحقق من أن عمر الغرفة أقل من 30 دقيقة
+                    if (now - room.created_at < THIRTY_MINUTES_MS) {
                         count++;
                         const li = document.createElement("li");
                         li.className = "room-item";
@@ -292,6 +317,7 @@
                         li.onclick = () => openPassModal(room.id, room.name, room.pass);
                         ul.appendChild(li);
                     } else {
+                        // تنظيف المجالس التي تجاوزت 30 دقيقة
                         supabase.from('rooms').delete().eq('id', room.id).then();
                     }
                 });
@@ -375,7 +401,6 @@
         closeModal('pass-modal');
     }
 
-    // إعادة الاتصال التلقائي للمجلس عند عمل Refresh
     async function reconnectToRoom() {
         const { data: room } = await supabase.from('rooms').select('*').eq('id', roomId).single();
         if (room) {
@@ -406,7 +431,7 @@
             processRoomData(payload.new);
         })
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, () => {
-            alert("تم إغلاق وتدمير هذا المجلس!");
+            alert("تم إغلاق وتدمير هذا المجلس من قِبل الرئيس!");
             leaveRoomLocally();
         }).subscribe();
     }
@@ -496,20 +521,19 @@
         await supabase.from('rooms').update({ state: 'LOBBY' }).eq('id', roomId);
     }
 
+    // تعديل مغادرة المجلس: الآن تغادر القائمة فقط ولا تحذف المجلس نهائياً ليظل متاحاً
     async function leaveRoom() {
         if (!roomId || !currentRoomData) return leaveRoomLocally();
         let players = currentRoomData.players.filter(p => p !== myName);
         
-        if (players.length === 0) {
-            await supabase.from('rooms').delete().eq('id', roomId);
-        } else {
-            await supabase.from('rooms').update({ players: players }).eq('id', roomId);
-        }
+        // تحديث الأعضاء في المجلس دون حذف المجلس نفسه
+        await supabase.from('rooms').update({ players: players }).eq('id', roomId);
         leaveRoomLocally();
     }
 
+    // زر خاص لرئيس المجلس لتدمير وإغلاق المجلس نهائياً
     async function destroyRoom() {
-        if (!confirm("هل أنت متأكد من تدمير المجلس؟")) return;
+        if (!confirm("هل أنت متأكد من تدمير وإغلاق هذا المجلس نهائياً؟")) return;
         await supabase.from('rooms').delete().eq('id', roomId);
     }
 
@@ -527,7 +551,6 @@
         document.getElementById(id).classList.remove("hidden");
     }
 
-    // تشغيل النظام
     init();
 </script>
 
