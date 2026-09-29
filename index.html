@@ -66,15 +66,15 @@
     <h1>🏛️ مجلس الأحكام الملكي</h1>
     <div class="subtitle" id="welcome-msg">منصة الاقتراع والقرعة المباشرة عبر الدول</div>
 
-    <!-- 0. شاشة التسجيل لأول مرة -->
-    <div id="sec-register" class="hidden">
+    <!-- 0. الشاشة الأولى المطلوبة: إدخال الاسم والتسجيل -->
+    <div id="sec-register">
         <h3 style="color:var(--gold); margin-bottom:15px; font-size:18px;">تسجيل الدخول للمجلس</h3>
-        <p style="color:#a497c6; font-size:13px; margin-bottom:15px;">سيتم حفظ اسمك لمرة واحدة فقط للتعرف عليك في المجالس.</p>
+        <p style="color:#a497c6; font-size:13px; margin-bottom:15px;">يرجى إدخال اسمك للتعرف عليك داخل المجالس:</p>
         <input type="text" id="reg-username" placeholder="أدخل اسمك الكريم..." maxlength="15">
-        <button onclick="saveUser()">حفظ ودخول 🚀</button>
+        <button onclick="saveUserAndProceed()">دخول للمجلس 🚀</button>
     </div>
 
-    <!-- 1. شاشة الدخول للمجالس -->
+    <!-- 1. الشاشة الثانية: واجهة الغرف والدخول إليها -->
     <div id="sec-join" class="hidden">
         <button class="top-btn" onclick="openLeaderboard()">🏆 لوحة شرف الحكام (التوب)</button>
         
@@ -132,7 +132,7 @@
             <button onclick="requestNewRound()">جولة جديدة بنفس المجلس 🔄</button>
         </div>
         <div id="member-controls" class="hidden" style="margin-top:20px;">
-            <div style="color:#a497c6; font-size:13px; margin-bottom:10px;">بانتظار قرار الرئيس לבدء جولة جديدة... ⏳</div>
+            <div style="color:#a497c6; font-size:13px; margin-bottom:10px;">بانتظار قرار الرئيس لبدء جولة جديدة... ⏳</div>
             <button class="secondary" onclick="leaveRoom()">الخروج من المجلس 🚪</button>
         </div>
     </div>
@@ -174,74 +174,48 @@
 </div>
 
 <script>
-    // 🔗 إعدادات Supabase الخاصة بك
+    // إعدادات Supabase
     const supabaseUrl = 'https://llsqgmpiclfoheqxnoqu.supabase.co';
     const supabaseKey = 'sb_publishable_VriM1ecC1V0FazJXEqXirA_4L77MTBX';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
     const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
     
-    let myName = localStorage.getItem("saved_username") || "";
-    let roomId = localStorage.getItem("saved_room_id") || "";
+    let myName = "";
+    let roomId = "";
     let currentRoomData = null;
     let roomSubscription = null;
 
-    // 1. التهيئة عند فتح الموقع (حل مشكلة الخروج من المتصفح)
-    async function init() {
-        if (!myName) {
-            showScreen('sec-register');
-        } else {
-            document.getElementById("welcome-msg").innerText = `مرحباً بعودتك يا ${myName} 👑`;
-            if (roomId) {
-                // محاولة العودة للغرفة السابقة إذا لم يتم تدميرها
-                const { data: room } = await supabase.from('rooms').select('*').eq('id', roomId).single();
-                if (room && (Date.now() - room.created_at < FIVE_HOURS_MS)) {
-                    enterLobby(room.name);
-                    listenToRoomEvents();
-                } else {
-                    localStorage.removeItem("saved_room_id");
-                    roomId = "";
-                    loadPublicRooms();
-                }
-            } else {
-                loadPublicRooms();
-            }
-        }
+    // 1. الدالة الأولى: إظهار شاشة إدخال الاسم دائماً عند التحميل
+    function init() {
+        showScreen('sec-register'); // إظهار واجهة التسجيل أولاً دائماً
     }
 
-    // 2. إدارة المستخدمين (التسجيل والتوب)
-    async function saveUser() {
-        const name = document.getElementById("reg-username").value.trim();
-        if(!name) return alert("الرجاء إدخال اسمك!");
-        
-        // التحقق من عدم تكرار الاسم
-        const { data } = await supabase.from('users').select('*').eq('username', name).single();
-        if(!data) await supabase.from('users').insert([{ username: name, wins: 0 }]);
-        
-        localStorage.setItem("saved_username", name);
-        myName = name;
+    // 2. عند الضغط على "دخول للمجلس 🚀"
+    async function saveUserAndProceed() {
+        const nameInput = document.getElementById("reg-username").value.trim();
+        if(!nameInput) return alert("الرجاء كتابة اسمك أولاً!");
+
+        myName = nameInput;
+
+        // تسجيل المستخدم أو التحقق منه في Supabase
+        const { data } = await supabase.from('users').select('*').eq('username', myName).single();
+        if(!data) {
+            await supabase.from('users').insert([{ username: myName, wins: 0 }]);
+        }
+
         document.getElementById("welcome-msg").innerText = `مرحباً بك يا ${myName} 👑`;
+        
+        // الانتقال تلقائياً إلى واجهة المجالس والغرف
         loadPublicRooms();
     }
 
-    async function openLeaderboard() {
-        const { data } = await supabase.from('users').select('*').order('wins', { ascending: false }).limit(10);
-        const ul = document.getElementById("top-players-list");
-        ul.innerHTML = "";
-        data.forEach((u, index) => {
-            const li = document.createElement("li");
-            li.innerHTML = `<span>${index + 1}. ${u.username}</span> <span class="tag">🏆 ${u.wins} فوز</span>`;
-            ul.appendChild(li);
-        });
-        document.getElementById("leaderboard-modal").classList.remove("hidden");
-    }
-
-    // 3. إدارة الغرف العام
+    // 3. عرض المجالس والغرف المتاحة
     function loadPublicRooms() {
         showScreen('sec-join');
         fetchRooms();
         
-        // تحديث القائمة العامة مباشرة
+        // متابعة التحديثات اللحظية للغرف
         supabase.channel('public:rooms').on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, payload => {
             fetchRooms();
         }).subscribe();
@@ -254,23 +228,38 @@
         let count = 0;
         const now = Date.now();
 
-        rooms.forEach(room => {
-            if (now - room.created_at < FIVE_HOURS_MS) {
-                count++;
+        if(rooms) {
+            rooms.forEach(room => {
+                if (now - room.created_at < FIVE_HOURS_MS) {
+                    count++;
+                    const li = document.createElement("li");
+                    li.className = "room-item";
+                    li.innerHTML = `
+                        <div><b>${room.name}</b></div>
+                        <span class="tag">انضمام 🔒</span>
+                    `;
+                    li.onclick = () => openPassModal(room.id, room.name, room.pass);
+                    ul.appendChild(li);
+                } else {
+                    supabase.from('rooms').delete().eq('id', room.id).then();
+                }
+            });
+        }
+        if (count === 0) ul.innerHTML = `<li style="color:#665b85; justify-content:center;">لا توجد مجالس متاحة حالياً، أنشئ مجلساً!</li>`;
+    }
+
+    async function openLeaderboard() {
+        const { data } = await supabase.from('users').select('*').order('wins', { ascending: false }).limit(10);
+        const ul = document.getElementById("top-players-list");
+        ul.innerHTML = "";
+        if(data) {
+            data.forEach((u, index) => {
                 const li = document.createElement("li");
-                li.className = "room-item";
-                li.innerHTML = `
-                    <div><b>${room.name}</b></div>
-                    <span class="tag">انضمام 🔒</span>
-                `;
-                li.onclick = () => openPassModal(room.id, room.name, room.pass);
+                li.innerHTML = `<span>${index + 1}. ${u.username}</span> <span class="tag">🏆 ${u.wins} فوز</span>`;
                 ul.appendChild(li);
-            } else {
-                // حذف الغرف المنتهية (مر عليها 5 ساعات)
-                supabase.from('rooms').delete().eq('id', room.id).then();
-            }
-        });
-        if (count === 0) ul.innerHTML = `<li style="color:#665b85; justify-content:center;">لا توجد مجالس متاحة</li>`;
+            });
+        }
+        document.getElementById("leaderboard-modal").classList.remove("hidden");
     }
 
     function showCreateModal() { document.getElementById("create-modal").classList.remove("hidden"); }
@@ -279,7 +268,7 @@
     async function confirmCreateRoom() {
         const name = document.getElementById("new-room-name").value.trim();
         const pass = document.getElementById("new-room-pass").value.trim();
-        if (!name || !pass) return alert("أكمل البيانات!");
+        if (!name || !pass) return alert("أكمل بيانات المجلس!");
 
         roomId = 'room_' + Math.floor(100000 + Math.random() * 900000);
         await supabase.from('rooms').insert([{
@@ -287,7 +276,6 @@
             state: 'LOBBY', players: [myName], results: {}
         }]);
 
-        localStorage.setItem("saved_room_id", roomId);
         closeModal('create-modal');
         enterLobby(name);
         listenToRoomEvents();
@@ -311,23 +299,19 @@
             await supabase.from('rooms').update({ players: players }).eq('id', roomId);
         }
         
-        localStorage.setItem("saved_room_id", roomId);
         enterLobby(room.name);
         listenToRoomEvents();
     }
 
-    // 4. العمليات داخل الغرفة (استمرار 5 ساعات والديناميكية)
     function enterLobby(name) {
         showScreen('sec-lobby');
         document.getElementById("display-room-name").innerText = name;
     }
 
     async function listenToRoomEvents() {
-        // قراءة الحالة الأولية
         const { data } = await supabase.from('rooms').select('*').eq('id', roomId).single();
         processRoomData(data);
 
-        // الاستماع المباشر للتغيرات
         roomSubscription = supabase.channel(`room_${roomId}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, payload => {
             processRoomData(payload.new);
@@ -342,11 +326,8 @@
         if (!data) return;
         currentRoomData = data;
         const players = data.players || [];
-        
-        // ميزة استمرار الغرفة (الرئيس هو دائماً الشخص الأول في القائمة)
         const isCurrentHost = (players[0] === myName);
         
-        // تحديث الواجهة
         const ul = document.getElementById("p-list");
         ul.innerHTML = "";
         document.getElementById("p-count").innerText = players.length;
@@ -357,7 +338,6 @@
             ul.appendChild(li);
         });
 
-        // صلاحيات الرئيس
         if (isCurrentHost) {
             document.getElementById("start-btn").classList.remove("hidden");
             document.getElementById("close-room-btn").classList.remove("hidden");
@@ -372,7 +352,6 @@
             document.getElementById("member-controls").classList.remove("hidden");
         }
 
-        // توجيه الشاشات
         if (data.state === 'LOBBY') {
             showScreen('sec-lobby');
             document.getElementById("rule-input").value = "";
@@ -394,7 +373,7 @@
 
     async function startDraw() {
         const players = currentRoomData.players || [];
-        if (players.length < 2) return alert("يجب وجود شخصين على الأقل!");
+        if (players.length < 2) return alert("يجب وجود شخصين على الأقل لبدء القرعة!");
 
         let shuffled = [...players].sort(() => 0.5 - Math.random());
         let king = shuffled[0];
@@ -409,12 +388,11 @@
 
     async function submitRule() {
         const ruleText = document.getElementById("rule-input").value.trim();
-        if (!ruleText) return alert("اكتب الحكم!");
+        if (!ruleText) return alert("اكتب الحكم أولاً!");
 
         let res = currentRoomData.results;
         res.rule = ruleText;
 
-        // تسجيل نقطة فوز للحاكم
         const { data: user } = await supabase.from('users').select('wins').eq('username', myName).single();
         if(user) {
             await supabase.from('users').update({ wins: user.wins + 1 }).eq('username', myName);
@@ -436,13 +414,12 @@
 
     function leaveRoomLocally() {
         if (roomSubscription) supabase.removeChannel(roomSubscription);
-        localStorage.removeItem("saved_room_id");
         roomId = "";
-        location.reload();
+        loadPublicRooms();
     }
 
     async function destroyRoom() {
-        if (!confirm("هل أنت متأكد من تدمير المجلس وحذف الجميع؟")) return;
+        if (!confirm("هل أنت متأكد من تدمير المجلس؟")) return;
         await supabase.from('rooms').delete().eq('id', roomId);
     }
 
@@ -453,9 +430,8 @@
         document.getElementById(id).classList.remove("hidden");
     }
 
-    // بدء التشغيل
+    // التشغيل المباشر عند فتح الموقع
     init();
-
 </script>
 
 </body>
