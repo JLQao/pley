@@ -61,15 +61,15 @@
 
         input { 
             width: 100%; 
-            padding: 15px; 
+            padding: 14px; 
             border-radius: 16px; 
             border: 1px solid rgba(247, 208, 112, 0.2); 
             background: rgba(10, 6, 18, 0.8); 
             color: #fff; 
-            font-size: 15px; 
+            font-size: 14px; 
             text-align: center; 
             outline: none; 
-            margin-bottom: 12px; 
+            margin-bottom: 10px; 
         }
         input:focus { border-color: var(--gold); }
 
@@ -77,7 +77,7 @@
 
         button { 
             width: 100%; 
-            padding: 16px; 
+            padding: 15px; 
             border-radius: 16px; 
             border: none; 
             background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); 
@@ -96,7 +96,11 @@
             box-shadow: none;
             margin-top: 0;
         }
-        button:disabled { background: #1e172e !important; color: #584b73 !important; cursor: not-allowed; }
+        button.danger {
+            background: linear-gradient(135deg, var(--red) 0%, #a81339 100%);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(255, 42, 95, 0.3);
+        }
 
         .room-badge {
             background: rgba(247, 208, 112, 0.1);
@@ -113,27 +117,38 @@
         .list-box { 
             background: rgba(10, 6, 18, 0.7); 
             border-radius: 18px; 
-            padding: 18px; 
+            padding: 15px; 
             border: 1px solid rgba(255, 255, 255, 0.05); 
-            margin: 18px 0; 
+            margin: 15px 0; 
             text-align: right; 
         }
-        .list-title { font-size: 13px; color: #a497c6; margin-bottom: 12px; display: flex; justify-content: space-between; }
-        ul { list-style: none; max-height: 150px; overflow-y: auto; }
-        li { padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+        .list-title { font-size: 13px; color: #a497c6; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
+        ul { list-style: none; max-height: 140px; overflow-y: auto; }
+        li { padding: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
         li:last-child { border: none; }
         
-        .tag { font-size: 11px; padding: 4px 10px; border-radius: 8px; background: rgba(0, 240, 181, 0.15); color: var(--green); border: 1px solid rgba(0, 240, 181, 0.3); }
+        .room-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(247, 208, 112, 0.1);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .room-item:hover { border-color: var(--gold); background: rgba(247, 208, 112, 0.05); }
+
+        .tag { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: rgba(0, 240, 181, 0.15); color: var(--green); border: 1px solid rgba(0, 240, 181, 0.3); }
 
         .res-card { 
-            padding: 16px; 
-            border-radius: 16px; 
-            margin: 12px 0; 
+            padding: 14px; 
+            border-radius: 14px; 
+            margin: 10px 0; 
             font-weight: 800; 
             text-align: right; 
             display: flex; 
             justify-content: space-between; 
-            font-size: 16px; 
+            font-size: 15px; 
         }
         .king { background: linear-gradient(90deg, #f7d070, #e0a938); color: #120b1f; }
         .victim { background: linear-gradient(90deg, #ff2a5f, #bf133d); color: #fff; }
@@ -142,13 +157,12 @@
         .rule-box {
             background: rgba(247, 208, 112, 0.1);
             border: 1px dashed var(--gold);
-            padding: 16px;
-            border-radius: 16px;
-            margin: 15px 0;
+            padding: 14px;
+            border-radius: 14px;
+            margin: 12px 0;
             text-align: center;
         }
 
-        /* ستايل النافذة المنبثقة للإشعار */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
@@ -156,10 +170,10 @@
         }
         .modal-box {
             background: var(--panel); border: 1px solid var(--gold); border-radius: 24px;
-            padding: 30px 25px; width: 90%; max-width: 350px; text-align: center;
+            padding: 25px 20px; width: 90%; max-width: 350px; text-align: center;
         }
 
-        .footer { margin-top: 22px; font-size: 12px; color: #5d527a; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; }
+        .footer { margin-top: 20px; font-size: 12px; color: #5d527a; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; }
         .footer b { color: var(--gold); }
         .hidden { display: none !important; }
     </style>
@@ -170,21 +184,27 @@
     <h1>🏛️ مجلس الأحكام الملكي</h1>
     <div class="subtitle">منصة الاقتراع والقرعة المباشرة عبر الدول</div>
 
-    <!-- 1. شاشة الدخول والرمز -->
+    <!-- 1. شاشة الدخول وإنشاء/تصفح المجالس -->
     <div id="sec-join">
         <input type="text" id="username" placeholder="أدخل اسمك الكريم..." maxlength="15">
-        <input type="number" id="room-code-input" placeholder="رمز المجلس (مثال: 4821)" maxlength="6">
         
-        <div class="btn-group">
-            <button onclick="createRoom()">إنشاء مجلس جديد 👑</button>
-            <button class="secondary" onclick="joinRoom()">انضمام بالرمز 🔗</button>
+        <div class="list-box">
+            <div class="list-title">
+                <span>المجالس المتاحة حالياً 🌐</span>
+                <span style="font-size: 10px; color: #8e83ab;">تُغلق تلقائياً بعد 5 ساعات</span>
+            </div>
+            <ul id="public-rooms-list">
+                <li style="color:#665b85; justify-content:center;">جاري البحث عن المجالس...</li>
+            </ul>
         </div>
+
+        <button onclick="showCreateModal()">إنشاء مجلس جديد 👑</button>
     </div>
 
     <!-- 2. مجلس الانتظار -->
     <div id="sec-lobby" class="hidden">
         <div class="room-badge">
-            رمز المجلس: <span id="display-room-code">----</span>
+            مجلس: <span id="display-room-name">----</span>
         </div>
 
         <div class="list-box">
@@ -195,12 +215,12 @@
             <ul id="p-list"></ul>
         </div>
 
-        <!-- زر الرئيس لبدء القرعة -->
         <button id="start-btn" onclick="startDraw()" class="hidden">بدء سحب القرعة 🎲</button>
+        <button id="close-room-btn" onclick="destroyRoom()" class="danger hidden" style="margin-top:10px;">إغلاق وتدمير المجلس 🚫</button>
         <div id="waiting-msg" style="color:#8e83ab; font-size:14px; margin-top:10px;">بانتظار أن يبدأ رئيس المجلس القرعة... ⏳</div>
     </div>
 
-    <!-- 3. شاشة إدخال الحكم (قبل النتائج) -->
+    <!-- 3. شاشة إدخال الحكم (للحاكم) -->
     <div id="sec-judge-input" class="hidden">
         <h3 style="color:var(--gold); margin-bottom:15px; font-size:22px;">👑 أنت الحاكم!</h3>
         <p style="margin-bottom:15px; color:#fff; font-size:14px;">اكتب حكمك الآن قبل أن تعرف من الذي سيقع عليه الحكم:</p>
@@ -212,7 +232,7 @@
     <div id="sec-judge-waiting" class="hidden">
         <h3 style="color:var(--gold); margin-bottom:15px; font-size:22px;">⚖️ جاري كتابة الحكم...</h3>
         <p id="waiting-for-king-msg" style="color:#a497c6; font-size:15px; margin-bottom:20px;">جلالة الملك يكتب الحكم الآن...</p>
-        <div class="loader" style="font-size: 30px;">⏳</div>
+        <div style="font-size: 30px;">⏳</div>
     </div>
 
     <!-- 5. شاشة إعلان الأحكام النهائية -->
@@ -224,18 +244,17 @@
         <div class="res-card witness"><span>👁️ الشاهد الملكي:</span> <span id="r-witness">-</span></div>
         
         <div class="rule-box">
-            <span style="color:var(--gold); font-size:14px; display:block; margin-bottom:5px;">نص الحكم الصادر:</span>
-            <span id="r-rule" style="font-size:18px; font-weight:bold; color:#fff;">-</span>
+            <span style="color:var(--gold); font-size:13px; display:block; margin-bottom:4px;">نص الحكم الصادر:</span>
+            <span id="r-rule" style="font-size:16px; font-weight:bold; color:#fff;">-</span>
         </div>
         
-        <!-- أزرار التحكم بعد النتيجة -->
-        <div id="host-controls" class="hidden" style="margin-top:25px;">
+        <div id="host-controls" class="hidden" style="margin-top:20px;">
             <button onclick="requestNewRound()">جولة جديدة بنفس المجلس 🔄</button>
-            <button class="secondary" onclick="location.reload()" style="margin-top:10px;">إنهاء المجلس والخروج 🚪</button>
+            <button class="danger" onclick="destroyRoom()" style="margin-top:8px;">إغلاق المجلس نهائياً 🚪</button>
         </div>
         
-        <div id="member-controls" class="hidden" style="margin-top:25px;">
-            <div style="color:#a497c6; font-size:14px; margin-bottom:15px;">بانتظار قرار الرئيس لبدء جولة جديدة... ⏳</div>
+        <div id="member-controls" class="hidden" style="margin-top:20px;">
+            <div style="color:#a497c6; font-size:13px; margin-bottom:10px;">بانتظار قرار الرئيس لبدء جولة جديدة... ⏳</div>
             <button class="secondary" onclick="location.reload()">الخروج من المجلس 🚪</button>
         </div>
     </div>
@@ -243,11 +262,37 @@
     <div class="footer">صُممت الفخامة بحقوق <b>وضاح</b> © 2026</div>
 </div>
 
-<!-- نافذة دعوة الجولة الجديدة -->
+<!-- نافذة إنشاء مجلس جديد -->
+<div id="create-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3 style="color:var(--gold); margin-bottom:15px; font-size:20px;">👑 إنشاء مجلس جديد</h3>
+        <input type="text" id="new-room-name" placeholder="اسم المجلس (مثال: مجلس الشيوخ)" maxlength="20">
+        <input type="password" id="new-room-pass" placeholder="كلمة مرور المجلس" maxlength="15">
+        <div class="btn-group" style="margin-top: 10px;">
+            <button onclick="confirmCreateRoom()">تأكيد الإنشاء 🚀</button>
+            <button class="secondary" onclick="closeCreateModal()">إلغاء ❌</button>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة إدخال كلمة المرور للانضمام -->
+<div id="pass-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3 style="color:var(--gold); margin-bottom:10px; font-size:20px;">🔒 كلمة المرور مطلوبة</h3>
+        <p id="pass-modal-room-name" style="color:#a497c6; font-size:13px; margin-bottom:15px;"></p>
+        <input type="password" id="join-room-pass" placeholder="أدخل كلمة المرور">
+        <div class="btn-group" style="margin-top: 10px;">
+            <button onclick="confirmJoinRoom()">انضمام ✅</button>
+            <button class="secondary" onclick="closePassModal()">إلغاء ❌</button>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة إشعار الجولة الجديدة -->
 <div id="rejoin-modal" class="modal-overlay hidden">
     <div class="modal-box">
         <h3 style="color:var(--gold); margin-bottom:15px; font-size:22px;">🔄 جولة جديدة!</h3>
-        <p style="margin-bottom:25px; color:#fff; font-size:15px;">بدأ رئيس المجلس جولة جديدة، هل تود الاستمرار في اللعب؟</p>
+        <p style="margin-bottom:20px; color:#fff; font-size:14px;">بدأ رئيس المجلس جولة جديدة، هل تود الاستمرار؟</p>
         <div class="btn-group">
             <button onclick="acceptRejoin()">انضمام ✅</button>
             <button class="secondary" onclick="rejectRejoin()">رفض ❌</button>
@@ -256,88 +301,202 @@
 </div>
 
 <script>
+    const LOBBY_TOPIC = "vip_rulers_global_lobby_2026";
+    const FIVE_HOURS_MS = 5 * 60 * 60 * 1000; // 5 ساعات بالميللي ثانية
+
     let client = null;
     let myName = "";
     let roomTopic = "";
     let isHost = false;
     let players = [];
-    let currentResults = {}; // لحفظ النتائج مؤقتاً قبل إعلانها
+    let currentResults = {};
+    let publicRooms = {}; // قائمة الغرف المتاحة
+    let selectedRoomId = "";
 
-    function connectDB(code, onConnectCallback) {
+    // الاتصال بالسيرفر العام بمجرد فتح الصفحة لتمكين رؤية الغرف
+    window.onload = () => {
         client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
-        roomTopic = 'vip_rulers_room_' + code;
 
         client.on('connect', () => {
-            client.subscribe(roomTopic);
-            if (onConnectCallback) onConnectCallback();
+            client.subscribe(LOBBY_TOPIC);
+            // إرسال طلب استعلام عن الغرف النشطة
+            client.publish(LOBBY_TOPIC, JSON.stringify({ type: 'PING_ROOMS' }));
         });
 
         client.on('message', (topic, message) => {
             const data = JSON.parse(message.toString());
 
-            if (data.type === 'JOIN_REQ' && isHost) {
-                if (!players.includes(data.name)) {
-                    players.push(data.name);
-                }
-                updateUI();
-                client.publish(roomTopic, JSON.stringify({ type: 'SYNC_PLAYERS', players: players }));
-            } 
-            else if (data.type === 'SYNC_PLAYERS') {
-                players = data.players;
-                updateUI();
-            } 
-            // استقبال إشعار انتظار الحاكم ليكتب الحكم
-            else if (data.type === 'WAITING_FOR_JUDGE') {
-                showJudgeScreen(data.results);
-            }
-            // استقبال النتيجة النهائية مع الحكم
-            else if (data.type === 'DRAW_RESULTS') {
-                showResults(data.results);
-            }
-            else if (data.type === 'NEW_ROUND' && !isHost) {
-                document.getElementById("rejoin-modal").classList.remove("hidden");
-            }
-        });
+            // معالجة الرسائل الخاصة بالقائمة العامة
+            if (topic === LOBBY_TOPIC) {
+                const now = Date.now();
 
-        client.on('error', () => {
-            alert("حدث خطأ في الاتصال، يرجى المحاولة مرة أخرى.");
+                if (data.type === 'ANNOUNCE_ROOM') {
+                    // تجاهل الغرف التي انتهت مهلتها (5 ساعات)
+                    if (now - data.createdAt < FIVE_HOURS_MS) {
+                        publicRooms[data.roomId] = data;
+                        renderPublicRooms();
+                    }
+                } 
+                else if (data.type === 'PING_ROOMS' && isHost) {
+                    // إذا كنت رئيساً لغرفة، أرسل بياناتها فوراً للداخلين الجدد
+                    announceMyRoom();
+                } 
+                else if (data.type === 'DESTROY_ROOM') {
+                    delete publicRooms[data.roomId];
+                    renderPublicRooms();
+                }
+            } 
+            // معالجة الرسائل داخل الغرفة الخاصة
+            else if (topic === roomTopic) {
+                if (data.type === 'JOIN_REQ' && isHost) {
+                    if (data.pass === publicRooms[roomTopic].pass) {
+                        if (!players.includes(data.name)) players.push(data.name);
+                        updateUI();
+                        client.publish(roomTopic, JSON.stringify({ type: 'SYNC_PLAYERS', players: players }));
+                    } else {
+                        client.publish(roomTopic, JSON.stringify({ type: 'REJECT_JOIN', target: data.name, reason: 'كلمة المرور غير صحيحة!' }));
+                    }
+                } 
+                else if (data.type === 'REJECT_JOIN' && data.target === myName) {
+                    alert(data.reason);
+                    location.reload();
+                }
+                else if (data.type === 'SYNC_PLAYERS') {
+                    players = data.players;
+                    updateUI();
+                } 
+                else if (data.type === 'WAITING_FOR_JUDGE') {
+                    showJudgeScreen(data.results);
+                }
+                else if (data.type === 'DRAW_RESULTS') {
+                    showResults(data.results);
+                }
+                else if (data.type === 'NEW_ROUND' && !isHost) {
+                    document.getElementById("rejoin-modal").classList.remove("hidden");
+                }
+                else if (data.type === 'ROOM_DESTROYED') {
+                    alert("قام منشئ المجلس بإغلاقه.");
+                    location.reload();
+                }
+            }
         });
+    };
+
+    // إرسال بيانات الغرفة لجميع المتصفحين لتظهر بالقائمة
+    function announceMyRoom() {
+        if (!isHost || !publicRooms[roomTopic]) return;
+        client.publish(LOBBY_TOPIC, JSON.stringify(publicRooms[roomTopic]));
     }
 
-    function createRoom() {
+    // عرض الغرف المتاحة على الواجهة
+    function renderPublicRooms() {
+        const ul = document.getElementById("public-rooms-list");
+        ul.innerHTML = "";
+
+        const roomKeys = Object.keys(publicRooms);
+        const now = Date.now();
+        let count = 0;
+
+        roomKeys.forEach(key => {
+            const room = publicRooms[key];
+            // تصفية الغرف القديمة التي تجاوزت 5 ساعات
+            if (now - room.createdAt < FIVE_HOURS_MS) {
+                count++;
+                const li = document.createElement("li");
+                li.className = "room-item";
+                li.innerHTML = `
+                    <div>
+                        <b>${room.name}</b>
+                        <div style="font-size:10px; color:#a497c6;">الرئيس: ${room.host}</div>
+                    </div>
+                    <span class="tag">انضمام 🔒</span>
+                `;
+                li.onclick = () => openPassModal(key, room.name);
+                ul.appendChild(li);
+            }
+        });
+
+        if (count === 0) {
+            ul.innerHTML = `<li style="color:#665b85; justify-content:center;">لا توجد مجالس مفتوحة حالياً، أنشئ مجلساً جديداً!</li>`;
+        }
+    }
+
+    function showCreateModal() {
         myName = document.getElementById("username").value.trim();
         if (!myName) return alert("يرجى إدخال اسمك الكريم أولاً!");
-
-        const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
-        isHost = true;
-
-        connectDB(randomCode, () => {
-            document.getElementById("sec-join").classList.add("hidden");
-            document.getElementById("sec-lobby").classList.remove("hidden");
-            document.getElementById("display-room-code").innerText = randomCode;
-            document.getElementById("start-btn").classList.remove("hidden");
-            document.getElementById("waiting-msg").classList.add("hidden");
-
-            players.push(myName);
-            updateUI();
-            client.publish(roomTopic, JSON.stringify({ type: 'SYNC_PLAYERS', players: players }));
-        });
+        document.getElementById("create-modal").classList.remove("hidden");
     }
 
-    function joinRoom() {
+    function closeCreateModal() {
+        document.getElementById("create-modal").classList.add("hidden");
+    }
+
+    function confirmCreateRoom() {
+        const roomName = document.getElementById("new-room-name").value.trim();
+        const roomPass = document.getElementById("new-room-pass").value.trim();
+
+        if (!roomName) return alert("يرجى إدخال اسم للمجلس!");
+        if (!roomPass) return alert("يرجى تعيين كلمة مرور للمجلس!");
+
+        const randomId = Math.floor(1000 + Math.random() * 9000).toString();
+        roomTopic = 'vip_rulers_room_' + randomId;
+        isHost = true;
+
+        const roomData = {
+            type: 'ANNOUNCE_ROOM',
+            roomId: roomTopic,
+            name: roomName,
+            pass: roomPass,
+            host: myName,
+            createdAt: Date.now()
+        };
+
+        publicRooms[roomTopic] = roomData;
+        client.subscribe(roomTopic);
+        announceMyRoom();
+
+        closeCreateModal();
+        document.getElementById("sec-join").classList.add("hidden");
+        document.getElementById("sec-lobby").classList.remove("hidden");
+        document.getElementById("display-room-name").innerText = roomName;
+        document.getElementById("start-btn").classList.remove("hidden");
+        document.getElementById("close-room-btn").classList.remove("hidden");
+        document.getElementById("waiting-msg").classList.add("hidden");
+
+        players.push(myName);
+        updateUI();
+
+        // تجديد الإعلان عن الغرفة كل 30 ثانية لتظل ظاهرة
+        setInterval(announceMyRoom, 30000);
+    }
+
+    function openPassModal(roomId, roomName) {
         myName = document.getElementById("username").value.trim();
-        const code = document.getElementById("room-code-input").value.trim();
+        if (!myName) return alert("يرجى إدخال اسمك الكريم أولاً بالخارج!");
+        
+        selectedRoomId = roomId;
+        document.getElementById("pass-modal-room-name").innerText = `المجلس: ${roomName}`;
+        document.getElementById("pass-modal").classList.remove("hidden");
+    }
 
-        if (!myName) return alert("يرجى إدخال اسمك الكريم!");
-        if (!code) return alert("يرجى كتابة رمز المجلس للانضمام!");
+    function closePassModal() {
+        document.getElementById("pass-modal").classList.add("hidden");
+    }
 
-        connectDB(code, () => {
-            document.getElementById("sec-join").classList.add("hidden");
-            document.getElementById("sec-lobby").classList.remove("hidden");
-            document.getElementById("display-room-code").innerText = code;
+    function confirmJoinRoom() {
+        const pass = document.getElementById("join-room-pass").value.trim();
+        if (!pass) return alert("يرجى إدخال كلمة المرور!");
 
-            client.publish(roomTopic, JSON.stringify({ type: 'JOIN_REQ', name: myName }));
-        });
+        roomTopic = selectedRoomId;
+        client.subscribe(roomTopic);
+
+        closePassModal();
+        document.getElementById("sec-join").classList.add("hidden");
+        document.getElementById("sec-lobby").classList.remove("hidden");
+        document.getElementById("display-room-name").innerText = publicRooms[roomTopic] ? publicRooms[roomTopic].name : "المجلس";
+
+        // إرسال طلب انضمام بكلمة المرور
+        client.publish(roomTopic, JSON.stringify({ type: 'JOIN_REQ', name: myName, pass: pass }));
     }
 
     function updateUI() {
@@ -360,25 +519,19 @@
         let shuffled = [...players].sort(() => 0.5 - Math.random());
         let king = shuffled[0];
         let victim = shuffled[1];
-        
-        // إذا كان هناك لاعبان فقط، نضيف الشاهد الروبوت
         let witness = players.length === 2 ? "الروبوت 🤖 (شاهد آلي)" : shuffled[2];
 
         const results = { king: king, victim: victim, witness: witness };
-
-        // إرسال رسالة للجميع للانتقال لشاشة كتابة الحكم أو الانتظار
         client.publish(roomTopic, JSON.stringify({ type: 'WAITING_FOR_JUDGE', results: results }));
     }
 
     function showJudgeScreen(results) {
-        currentResults = results; // حفظ النتائج محلياً
+        currentResults = results;
         document.getElementById("sec-lobby").classList.add("hidden");
         
         if (myName === results.king) {
-            // إذا كنت أنا الحاكم، أظهر لي شاشة الإدخال
             document.getElementById("sec-judge-input").classList.remove("hidden");
         } else {
-            // إذا كنت عضواً آخر، أظهر لي شاشة الانتظار
             document.getElementById("sec-judge-waiting").classList.remove("hidden");
             document.getElementById("waiting-for-king-msg").innerText = `جلالة الملك (${results.king}) يكتب الحكم الآن... ✍️👑`;
         }
@@ -388,13 +541,11 @@
         const ruleText = document.getElementById("rule-input").value.trim();
         if (!ruleText) return alert("يجب عليك كتابة الحكم أولاً قبل المتابعة!");
 
-        // إضافة الحكم إلى النتائج وإرسالها للجميع لعرضها
         currentResults.rule = ruleText;
         client.publish(roomTopic, JSON.stringify({ type: 'DRAW_RESULTS', results: currentResults }));
     }
 
     function showResults(results) {
-        // إخفاء كافة شاشات الإدخال والانتظار
         document.getElementById("sec-judge-input").classList.add("hidden");
         document.getElementById("sec-judge-waiting").classList.add("hidden");
         document.getElementById("sec-result").classList.remove("hidden");
@@ -402,7 +553,7 @@
         document.getElementById("r-king").innerText = results.king;
         document.getElementById("r-victim").innerText = results.victim;
         document.getElementById("r-witness").innerText = results.witness;
-        document.getElementById("r-rule").innerText = results.rule; // عرض نص الحكم
+        document.getElementById("r-rule").innerText = results.rule;
 
         if (isHost) {
             document.getElementById("host-controls").classList.remove("hidden");
@@ -418,7 +569,7 @@
         
         document.getElementById("sec-result").classList.add("hidden");
         document.getElementById("sec-lobby").classList.remove("hidden");
-        document.getElementById("rule-input").value = ""; // تصفير حقل الحكم للجولة القادمة
+        document.getElementById("rule-input").value = "";
         updateUI();
 
         client.publish(roomTopic, JSON.stringify({ type: 'NEW_ROUND' }));
@@ -429,12 +580,25 @@
         document.getElementById("rejoin-modal").classList.add("hidden");
         document.getElementById("sec-result").classList.add("hidden");
         document.getElementById("sec-lobby").classList.remove("hidden");
-        document.getElementById("rule-input").value = ""; // تصفير الحقل للأعضاء أيضاً
+        document.getElementById("rule-input").value = "";
         
-        client.publish(roomTopic, JSON.stringify({ type: 'JOIN_REQ', name: myName }));
+        client.publish(roomTopic, JSON.stringify({ type: 'JOIN_REQ', name: myName, pass: publicRooms[roomTopic]?.pass }));
     }
 
     function rejectRejoin() {
+        location.reload();
+    }
+
+    // دالة إغلاق وتدمير الغرفة نهائياً من قِبل المنشئ
+    function destroyRoom() {
+        if (!confirm("هل أنت تأكد من رغبتك في إغلاق المجلس وطرد الجميع؟")) return;
+
+        // إبلاغ جميع المتصلين بإغلاق الغرفة
+        client.publish(roomTopic, JSON.stringify({ type: 'ROOM_DESTROYED' }));
+        
+        // إزالة الغرفة من القائمة العامة
+        client.publish(LOBBY_TOPIC, JSON.stringify({ type: 'DESTROY_ROOM', roomId: roomTopic }));
+
         location.reload();
     }
 </script>
