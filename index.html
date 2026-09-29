@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مجلس الأحكام الملكي - VIP</title>
-    <!-- مكتبة Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- استدعاء أحدث إصدار من مكتبة Supabase المتوافق مع مفاتيح Publishable -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
     <style>
         :root {
             --bg: #07050a;
@@ -21,29 +21,36 @@
         * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; }
         body { background: radial-gradient(circle at center, #1b102e 0%, var(--bg) 100%); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
         
-        .card { background: var(--panel); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 28px; padding: 30px 25px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(247, 208, 112, 0.1); position: relative; }
+        .card { background: var(--panel); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 28px; padding: 30px 25px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(247, 208, 112, 0.1); position: relative; overflow: hidden; }
         .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
         
         h1 { font-size: 26px; font-weight: 900; background: linear-gradient(180deg, #ffffff 30%, var(--gold) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px; }
         .subtitle { color: #8e83ab; font-size: 13px; margin-bottom: 22px; }
 
-        input { width: 100%; padding: 14px; border-radius: 16px; border: 1px solid rgba(247, 208, 112, 0.2); background: rgba(10, 6, 18, 0.8); color: #fff; font-size: 14px; text-align: center; outline: none; margin-bottom: 10px; }
-        input:focus { border-color: var(--gold); }
+        input { width: 100%; padding: 14px; border-radius: 16px; border: 1px solid rgba(247, 208, 112, 0.2); background: rgba(10, 6, 18, 0.8); color: #fff; font-size: 14px; text-align: center; outline: none; margin-bottom: 10px; transition: 0.3s; }
+        input:focus { border-color: var(--gold); box-shadow: 0 0 10px rgba(247, 208, 112, 0.2); }
 
         .btn-group { display: flex; gap: 10px; margin-bottom: 10px; }
         button { width: 100%; padding: 15px; border-radius: 16px; border: none; background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); color: #0d0814; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 6px 20px rgba(247, 208, 112, 0.25); transition: all 0.3s; margin-top: 5px; }
-        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         button.secondary { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid var(--border); box-shadow: none; margin-top: 0; }
+        button.secondary:hover { background: rgba(255, 255, 255, 0.15); }
         button.danger { background: linear-gradient(135deg, var(--red) 0%, #a81339 100%); color: #fff; box-shadow: 0 6px 20px rgba(255, 42, 95, 0.3); }
 
-        .room-badge { background: rgba(247, 208, 112, 0.1); border: 1px dashed var(--gold); color: var(--gold); padding: 10px; border-radius: 14px; font-size: 18px; font-weight: bold; margin-bottom: 15px; letter-spacing: 2px; }
+        .room-badge { background: rgba(247, 208, 112, 0.1); border: 1px dashed var(--gold); color: var(--gold); padding: 10px; border-radius: 14px; font-size: 18px; font-weight: bold; margin-bottom: 15px; letter-spacing: 1px; }
         .list-box { background: rgba(10, 6, 18, 0.7); border-radius: 18px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.05); margin: 15px 0; text-align: right; }
         .list-title { font-size: 13px; color: #a497c6; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
-        ul { list-style: none; max-height: 140px; overflow-y: auto; }
+        ul { list-style: none; max-height: 160px; overflow-y: auto; padding-left: 5px; }
+        
+        /* شريط التمرير */
+        ul::-webkit-scrollbar { width: 5px; }
+        ul::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 10px; }
+        
         li { padding: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
         
         .room-item { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(247, 208, 112, 0.1); border-radius: 12px; margin-bottom: 8px; padding: 10px 12px; cursor: pointer; transition: all 0.2s; }
-        .room-item:hover { border-color: var(--gold); background: rgba(247, 208, 112, 0.05); }
+        .room-item:hover { border-color: var(--gold); background: rgba(247, 208, 112, 0.05); transform: translateY(-2px); }
         .tag { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: rgba(0, 240, 181, 0.15); color: var(--green); border: 1px solid rgba(0, 240, 181, 0.3); }
 
         .res-card { padding: 14px; border-radius: 14px; margin: 10px 0; font-weight: 800; text-align: right; display: flex; justify-content: space-between; font-size: 15px; }
@@ -53,12 +60,15 @@
         
         .rule-box { background: rgba(247, 208, 112, 0.1); border: 1px dashed var(--gold); padding: 14px; border-radius: 14px; margin: 12px 0; text-align: center; }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-box { background: var(--panel); border: 1px solid var(--gold); border-radius: 24px; padding: 25px 20px; width: 90%; max-width: 350px; text-align: center; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: var(--panel); border: 1px solid var(--gold); border-radius: 24px; padding: 25px 20px; width: 90%; max-width: 350px; text-align: center; transform: translateY(20px); transition: transform 0.3s; }
+        .modal-overlay.active .modal-box { transform: translateY(0); }
 
         .footer { margin-top: 20px; font-size: 12px; color: #5d527a; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; }
         .hidden { display: none !important; }
-        .top-btn { background: transparent; border: 1px solid var(--gold); color: var(--gold); margin-bottom: 15px; }
+        .top-btn { background: transparent; border: 1px dashed var(--gold); color: var(--gold); margin-bottom: 15px; padding: 10px; font-size: 14px; }
+        .top-btn:hover { background: rgba(247, 208, 112, 0.1); }
     </style>
 </head>
 <body>
@@ -102,13 +112,13 @@
         <button id="start-btn" onclick="startDraw()" class="hidden">بدء سحب القرعة 🎲</button>
         <button id="close-room-btn" onclick="destroyRoom()" class="danger hidden" style="margin-top:10px;">إغلاق وتدمير المجلس 🚫</button>
         <button onclick="leaveRoom()" class="secondary" style="margin-top:8px;">مغادرة المجلس 🚪</button>
-        <div id="waiting-msg" style="color:#8e83ab; font-size:14px; margin-top:10px;">بانتظار أن يبدأ رئيس المجلس القرعة... ⏳</div>
+        <div id="waiting-msg" style="color:#8e83ab; font-size:14px; margin-top:15px;">بانتظار أن يبدأ رئيس المجلس القرعة... ⏳</div>
     </div>
 
     <!-- 3. شاشة إدخال الحكم -->
     <div id="sec-judge-input" class="hidden">
         <h3 style="color:var(--gold); margin-bottom:15px; font-size:22px;">👑 أنت الحاكم!</h3>
-        <input type="text" id="rule-input" placeholder="اكتب حكمك القاسي هنا..." maxlength="60">
+        <input type="text" id="rule-input" placeholder="اكتب حكمك القاسي هنا..." maxlength="100">
         <button onclick="submitRule()">إصدار الحكم 📜</button>
     </div>
 
@@ -116,7 +126,7 @@
     <div id="sec-judge-waiting" class="hidden">
         <h3 style="color:var(--gold); margin-bottom:15px; font-size:22px;">⚖️ جاري كتابة الحكم...</h3>
         <p id="waiting-for-king-msg" style="color:#a497c6; font-size:15px; margin-bottom:20px;"></p>
-        <div style="font-size: 30px;">⏳</div>
+        <div style="font-size: 35px; animation: pulse 1.5s infinite;">⏳</div>
     </div>
 
     <!-- 5. شاشة النتيجة -->
@@ -142,7 +152,7 @@
 </div>
 
 <!-- النوافذ المنبثقة -->
-<div id="create-modal" class="modal-overlay hidden">
+<div id="create-modal" class="modal-overlay">
     <div class="modal-box">
         <h3 style="color:var(--gold); margin-bottom:15px; font-size:20px;">👑 إنشاء مجلس جديد</h3>
         <input type="text" id="new-room-name" placeholder="اسم المجلس" maxlength="20">
@@ -154,7 +164,7 @@
     </div>
 </div>
 
-<div id="pass-modal" class="modal-overlay hidden">
+<div id="pass-modal" class="modal-overlay">
     <div class="modal-box">
         <h3 style="color:var(--gold); margin-bottom:10px; font-size:20px;">🔒 كلمة المرور مطلوبة</h3>
         <p id="pass-modal-room-name" style="color:#a497c6; font-size:13px; margin-bottom:15px;"></p>
@@ -166,7 +176,7 @@
     </div>
 </div>
 
-<div id="leaderboard-modal" class="modal-overlay hidden">
+<div id="leaderboard-modal" class="modal-overlay">
     <div class="modal-box">
         <h3 style="color:var(--gold); margin-bottom:15px; font-size:20px;">🏆 التوب (أفضل الحكام)</h3>
         <ul id="top-players-list" style="text-align:right; margin-bottom:15px;"></ul>
@@ -174,8 +184,12 @@
     </div>
 </div>
 
+<style>
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+</style>
+
 <script>
-    // إعدادات Supabase
+    // الإعدادات الخاصة بقاعدة البيانات (بالمفتاح الجديد)
     const supabaseUrl = 'https://llsqgmpiclfoheqxnoqu.supabase.co';
     const supabaseKey = 'sb_publishable_VriM1ecC1V0FazJXEqXirA_4L77MTBX';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -187,40 +201,25 @@
     let currentRoomData = null;
     let roomSubscription = null;
 
+    // تهيئة الشاشة الأولى
     function init() {
         showScreen('sec-register');
     }
 
-    // حل مشكلة عدم استجابة زر تسجيل الدخول
-    async function saveUserAndProceed() {
+    // دالة تسجيل الدخول الفورية (بدون انتظار قاعدة البيانات لتفادي التعليق)
+    function saveUserAndProceed() {
         const nameInput = document.getElementById("reg-username").value.trim();
-        if(!nameInput) return alert("الرجاء كتابة اسمك أولاً!");
-
-        const btn = document.getElementById("btn-enter");
-        btn.innerText = "جاري الدخول... ⏳";
-        btn.disabled = true;
+        if(!nameInput) return alert("الرجاء كتابة اسمك أولاً لتدخل المجلس!");
 
         myName = nameInput;
-
-        try {
-            // محاولة إدخال الاسم مع تحديد زمن أقصى للاتصال (Timeout) لضمان عدم تعليق الواجهة
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject("Timeout"), 3000));
-            const dbPromise = supabase.from('users').select('*').eq('username', myName).maybeSingle();
-
-            const res = await Promise.race([dbPromise, timeoutPromise]).catch(() => null);
-
-            if (res && res.data === null) {
-                await supabase.from('users').insert([{ username: myName, wins: 0 }]).catch(() => {});
-            }
-        } catch(e) {
-            console.log("الانتقال المباشر للمجالس مع الحفظ المحلي:", e);
-        }
-
         document.getElementById("welcome-msg").innerText = `مرحباً بك يا ${myName} 👑`;
-        btn.innerText = "دخول للمجلس 🚀";
-        btn.disabled = false;
         
-        // الانتقال الفوري للواجهة الثانية
+        // إرسال الاسم للقاعدة في الخلفية دون تعطيل الواجهة
+        supabase.from('users').upsert([{ username: myName }], { onConflict: 'username' })
+        .then(() => console.log("تم تحديث السجل"))
+        .catch(err => console.log("تخطي الخطأ:", err));
+
+        // الانتقال الفوري لشاشة الغرف
         loadPublicRooms();
     }
 
@@ -228,48 +227,56 @@
         showScreen('sec-join');
         fetchRooms();
         
+        // الاستماع المباشر لأي غرف جديدة تُضاف
         try {
-            supabase.channel('public:rooms').on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
+            supabase.channel('public:rooms')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, payload => {
                 fetchRooms();
             }).subscribe();
-        } catch(e) {}
+        } catch(e) { console.log(e); }
     }
 
+    // جلب الغرف المتاحة
     async function fetchRooms() {
         const ul = document.getElementById("public-rooms-list");
         try {
-            const { data: rooms } = await supabase.from('rooms').select('*');
+            const { data: rooms, error } = await supabase.from('rooms').select('*').order('created_at', { ascending: false });
             ul.innerHTML = "";
             let count = 0;
             const now = Date.now();
 
             if(rooms && rooms.length > 0) {
                 rooms.forEach(room => {
+                    // إخفاء الغرف المنتهية (أقدم من 5 ساعات)
                     if (now - room.created_at < FIVE_HOURS_MS) {
                         count++;
                         const li = document.createElement("li");
                         li.className = "room-item";
                         li.innerHTML = `
-                            <div><b>${room.name}</b></div>
+                            <div><b>${room.name}</b> <span style="font-size:10px; color:#8e83ab; margin-right:5px;">(${room.players ? room.players.length : 0} متصل)</span></div>
                             <span class="tag">انضمام 🔒</span>
                         `;
                         li.onclick = () => openPassModal(room.id, room.name, room.pass);
                         ul.appendChild(li);
                     } else {
+                        // تنظيف الغرف القديمة في الخلفية
                         supabase.from('rooms').delete().eq('id', room.id).then();
                     }
                 });
             }
-            if (count === 0) ul.innerHTML = `<li style="color:#665b85; justify-content:center;">لا توجد مجالس متاحة حالياً، أنشئ مجلساً!</li>`;
+            if (count === 0) {
+                ul.innerHTML = `<li style="color:#665b85; justify-content:center;">لا توجد مجالس متاحة حالياً، أنشئ مجلساً جديداً!</li>`;
+            }
         } catch(e) {
-            ul.innerHTML = `<li style="color:#665b85; justify-content:center;">لا توجد مجالس متاحة حالياً، أنشئ مجلساً!</li>`;
+            ul.innerHTML = `<li style="color:#665b85; justify-content:center;">تعذر جلب المجالس. تأكد من الاتصال.</li>`;
         }
     }
 
+    // لوحة الشرف
     async function openLeaderboard() {
         const ul = document.getElementById("top-players-list");
-        ul.innerHTML = "<li style='justify-content:center;'>جاري التحميل...</li>";
-        document.getElementById("leaderboard-modal").classList.remove("hidden");
+        ul.innerHTML = "<li style='justify-content:center;'>جاري التحميل... ⏳</li>";
+        document.getElementById("leaderboard-modal").classList.add("active");
 
         try {
             const { data } = await supabase.from('users').select('*').order('wins', { ascending: false }).limit(10);
@@ -277,7 +284,7 @@
             if(data && data.length > 0) {
                 data.forEach((u, index) => {
                     const li = document.createElement("li");
-                    li.innerHTML = `<span>${index + 1}. ${u.username}</span> <span class="tag">🏆 ${u.wins} فوز</span>`;
+                    li.innerHTML = `<span><b style="color:var(--gold);">${index + 1}.</b> ${u.username}</span> <span class="tag">🏆 ${u.wins || 0} فوز</span>`;
                     ul.appendChild(li);
                 });
             } else {
@@ -288,13 +295,23 @@
         }
     }
 
-    function showCreateModal() { document.getElementById("create-modal").classList.remove("hidden"); }
-    function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+    // دوال النوافذ المنبثقة
+    function showCreateModal() { 
+        document.getElementById("new-room-name").value = "";
+        document.getElementById("new-room-pass").value = "";
+        document.getElementById("create-modal").classList.add("active"); 
+    }
+    function closeModal(id) { document.getElementById(id).classList.remove("active"); }
 
+    // إنشاء مجلس جديد
     async function confirmCreateRoom() {
         const name = document.getElementById("new-room-name").value.trim();
         const pass = document.getElementById("new-room-pass").value.trim();
-        if (!name || !pass) return alert("أكمل بيانات المجلس!");
+        if (!name || !pass) return alert("الرجاء كتابة اسم المجلس وكلمة المرور!");
+
+        const btn = document.querySelector("#create-modal button");
+        btn.disabled = true;
+        btn.innerText = "جاري الإنشاء...";
 
         roomId = 'room_' + Math.floor(100000 + Math.random() * 900000);
         await supabase.from('rooms').insert([{
@@ -302,38 +319,53 @@
             state: 'LOBBY', players: [myName], results: {}
         }]);
 
+        btn.disabled = false;
+        btn.innerText = "تأكيد 🚀";
         closeModal('create-modal');
         enterLobby(name);
         listenToRoomEvents();
     }
 
+    // نافذة إدخال كلمة المرور
     let targetPass = "";
     function openPassModal(id, name, pass) {
         roomId = id; targetPass = pass;
+        document.getElementById("join-room-pass").value = "";
         document.getElementById("pass-modal-room-name").innerText = `المجلس: ${name}`;
-        document.getElementById("pass-modal").classList.remove("hidden");
+        document.getElementById("pass-modal").classList.add("active");
     }
 
+    // تأكيد الانضمام
     async function confirmJoinRoom() {
         if (document.getElementById("join-room-pass").value !== targetPass) return alert("كلمة المرور خاطئة!");
-        closeModal('pass-modal');
+        
+        const btn = document.querySelector("#pass-modal button");
+        btn.disabled = true;
+        btn.innerText = "جاري الدخول...";
 
         const { data: room } = await supabase.from('rooms').select('players, name').eq('id', roomId).single();
-        let players = room.players || [];
-        if (!players.includes(myName)) {
-            players.push(myName);
-            await supabase.from('rooms').update({ players: players }).eq('id', roomId);
+        if(room) {
+            let players = room.players || [];
+            if (!players.includes(myName)) {
+                players.push(myName);
+                await supabase.from('rooms').update({ players: players }).eq('id', roomId);
+            }
+            enterLobby(room.name);
+            listenToRoomEvents();
         }
         
-        enterLobby(room.name);
-        listenToRoomEvents();
+        btn.disabled = false;
+        btn.innerText = "انضمام ✅";
+        closeModal('pass-modal');
     }
 
+    // واجهة المجلس من الداخل
     function enterLobby(name) {
         showScreen('sec-lobby');
         document.getElementById("display-room-name").innerText = name;
     }
 
+    // الاستماع المباشر لأحداث الغرفة المحددة
     async function listenToRoomEvents() {
         const { data } = await supabase.from('rooms').select('*').eq('id', roomId).single();
         processRoomData(data);
@@ -343,17 +375,19 @@
             processRoomData(payload.new);
         })
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, () => {
-            alert("تم إغلاق المجلس!");
+            alert("تم إنهاء وإغلاق هذا المجلس من قِبل الرئيس!");
             leaveRoomLocally();
         }).subscribe();
     }
 
+    // معالجة بيانات الغرفة وتغيير الشاشات بناءً عليها
     function processRoomData(data) {
         if (!data) return;
         currentRoomData = data;
         const players = data.players || [];
         const isCurrentHost = (players[0] === myName);
         
+        // تحديث قائمة اللاعبين
         const ul = document.getElementById("p-list");
         ul.innerHTML = "";
         document.getElementById("p-count").innerText = players.length;
@@ -364,6 +398,7 @@
             ul.appendChild(li);
         });
 
+        // إظهار/إخفاء أزرار التحكم الخاصة بالرئيس
         if (isCurrentHost) {
             document.getElementById("start-btn").classList.remove("hidden");
             document.getElementById("close-room-btn").classList.remove("hidden");
@@ -378,6 +413,7 @@
             document.getElementById("member-controls").classList.remove("hidden");
         }
 
+        // توجيه اللاعبين حسب حالة اللعبة
         if (data.state === 'LOBBY') {
             showScreen('sec-lobby');
             document.getElementById("rule-input").value = "";
@@ -386,7 +422,7 @@
                 showScreen('sec-judge-input');
             } else {
                 showScreen('sec-judge-waiting');
-                document.getElementById("waiting-for-king-msg").innerText = `جلالة الملك (${data.results.king}) يكتب الحكم...`;
+                document.getElementById("waiting-for-king-msg").innerText = `جلالة الحاكم (${data.results.king}) يكتب الحكم الآن...`;
             }
         } else if (data.state === 'SHOW_RESULTS') {
             showScreen('sec-result');
@@ -397,10 +433,12 @@
         }
     }
 
+    // بدء سحب القرعة
     async function startDraw() {
         const players = currentRoomData.players || [];
-        if (players.length < 2) return alert("يجب وجود شخصين على الأقل لبدء القرعة!");
+        if (players.length < 2) return alert("يجب وجود شخصين على الأقل في المجلس لبدء القرعة!");
 
+        // خلط اللاعبين
         let shuffled = [...players].sort(() => 0.5 - Math.random());
         let king = shuffled[0];
         let victim = shuffled[1];
@@ -412,45 +450,58 @@
         }).eq('id', roomId);
     }
 
+    // إصدار الحكم
     async function submitRule() {
         const ruleText = document.getElementById("rule-input").value.trim();
-        if (!ruleText) return alert("اكتب الحكم أولاً!");
+        if (!ruleText) return alert("يرجى كتابة الحكم أولاً!");
 
         let res = currentRoomData.results;
         res.rule = ruleText;
 
+        // زيادة نقاط الفوز للحاكم بصمت
         try {
             const { data: user } = await supabase.from('users').select('wins').eq('username', myName).single();
             if(user) {
-                await supabase.from('users').update({ wins: user.wins + 1 }).eq('username', myName);
+                await supabase.from('users').update({ wins: (user.wins || 0) + 1 }).eq('username', myName);
             }
-        } catch(e) {}
+        } catch(e) { console.log(e); }
 
         await supabase.from('rooms').update({ state: 'SHOW_RESULTS', results: res }).eq('id', roomId);
     }
 
+    // طلب جولة جديدة
     async function requestNewRound() {
         await supabase.from('rooms').update({ state: 'LOBBY' }).eq('id', roomId);
     }
 
+    // مغادرة المجلس
     async function leaveRoom() {
         if (!roomId || !currentRoomData) return leaveRoomLocally();
         let players = currentRoomData.players.filter(p => p !== myName);
-        await supabase.from('rooms').update({ players: players }).eq('id', roomId);
+        
+        // إذا غادر آخر شخص يتم تدمير الغرفة، غير ذلك يتم تحديث قائمة اللاعبين
+        if (players.length === 0) {
+            await supabase.from('rooms').delete().eq('id', roomId);
+        } else {
+            await supabase.from('rooms').update({ players: players }).eq('id', roomId);
+        }
         leaveRoomLocally();
     }
 
+    // تدمير المجلس بالكامل
+    async function destroyRoom() {
+        if (!confirm("هل أنت متأكد من رغبتك في إغلاق وتدمير هذا المجلس بشكل نهائي؟")) return;
+        await supabase.from('rooms').delete().eq('id', roomId);
+    }
+
+    // تنظيف البيانات محلياً للعودة للرئيسية
     function leaveRoomLocally() {
         if (roomSubscription) supabase.removeChannel(roomSubscription);
         roomId = "";
         loadPublicRooms();
     }
 
-    async function destroyRoom() {
-        if (!confirm("هل أنت متأكد من تدمير المجلس؟")) return;
-        await supabase.from('rooms').delete().eq('id', roomId);
-    }
-
+    // التبديل بين الشاشات
     function showScreen(id) {
         ['sec-register', 'sec-join', 'sec-lobby', 'sec-judge-input', 'sec-judge-waiting', 'sec-result'].forEach(s => {
             document.getElementById(s).classList.add("hidden");
@@ -458,7 +509,7 @@
         document.getElementById(id).classList.remove("hidden");
     }
 
-    // التشغيل التلقائي عند فتح الصفحة
+    // تشغيل التطبيق
     init();
 </script>
 
