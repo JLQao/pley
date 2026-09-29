@@ -138,6 +138,15 @@
         .king { background: linear-gradient(90deg, #f7d070, #e0a938); color: #120b1f; }
         .victim { background: linear-gradient(90deg, #ff2a5f, #bf133d); color: #fff; }
         .witness { background: linear-gradient(90deg, #2a9df4, #1260cc); color: #fff; }
+        
+        .rule-box {
+            background: rgba(247, 208, 112, 0.1);
+            border: 1px dashed var(--gold);
+            padding: 16px;
+            border-radius: 16px;
+            margin: 15px 0;
+            text-align: center;
+        }
 
         /* ستايل النافذة المنبثقة للإشعار */
         .modal-overlay {
@@ -191,14 +200,35 @@
         <div id="waiting-msg" style="color:#8e83ab; font-size:14px; margin-top:10px;">بانتظار أن يبدأ رئيس المجلس القرعة... ⏳</div>
     </div>
 
-    <!-- 3. شاشة إعلان الأحكام -->
+    <!-- 3. شاشة إدخال الحكم (قبل النتائج) -->
+    <div id="sec-judge-input" class="hidden">
+        <h3 style="color:var(--gold); margin-bottom:15px; font-size:22px;">👑 أنت الحاكم!</h3>
+        <p style="margin-bottom:15px; color:#fff; font-size:14px;">اكتب حكمك الآن قبل أن تعرف من الذي سيقع عليه الحكم:</p>
+        <input type="text" id="rule-input" placeholder="اكتب حكمك القاسي هنا..." maxlength="60">
+        <button onclick="submitRule()">إصدار الحكم 📜</button>
+    </div>
+
+    <!-- 4. شاشة انتظار الأعضاء أثناء كتابة الحكم -->
+    <div id="sec-judge-waiting" class="hidden">
+        <h3 style="color:var(--gold); margin-bottom:15px; font-size:22px;">⚖️ جاري كتابة الحكم...</h3>
+        <p id="waiting-for-king-msg" style="color:#a497c6; font-size:15px; margin-bottom:20px;">جلالة الملك يكتب الحكم الآن...</p>
+        <div class="loader" style="font-size: 30px;">⏳</div>
+    </div>
+
+    <!-- 5. شاشة إعلان الأحكام النهائية -->
     <div id="sec-result" class="hidden">
         <h3 style="color:var(--gold); margin-bottom:15px; font-size:20px;">📜 صدر الحكم الملكي 📜</h3>
+        
         <div class="res-card king"><span>👑 جلالة الحاكم:</span> <span id="r-king">-</span></div>
         <div class="res-card victim"><span>🎯 المحكوم عليه:</span> <span id="r-victim">-</span></div>
         <div class="res-card witness"><span>👁️ الشاهد الملكي:</span> <span id="r-witness">-</span></div>
         
-        <!-- أزرار التحكم بعد النتيجة (مخصصة للرئيس والأعضاء) -->
+        <div class="rule-box">
+            <span style="color:var(--gold); font-size:14px; display:block; margin-bottom:5px;">نص الحكم الصادر:</span>
+            <span id="r-rule" style="font-size:18px; font-weight:bold; color:#fff;">-</span>
+        </div>
+        
+        <!-- أزرار التحكم بعد النتيجة -->
         <div id="host-controls" class="hidden" style="margin-top:25px;">
             <button onclick="requestNewRound()">جولة جديدة بنفس المجلس 🔄</button>
             <button class="secondary" onclick="location.reload()" style="margin-top:10px;">إنهاء المجلس والخروج 🚪</button>
@@ -213,7 +243,7 @@
     <div class="footer">صُممت الفخامة بحقوق <b>وضاح</b> © 2026</div>
 </div>
 
-<!-- 4. نافذة دعوة الجولة الجديدة (للأعضاء فقط) -->
+<!-- نافذة دعوة الجولة الجديدة -->
 <div id="rejoin-modal" class="modal-overlay hidden">
     <div class="modal-box">
         <h3 style="color:var(--gold); margin-bottom:15px; font-size:22px;">🔄 جولة جديدة!</h3>
@@ -231,6 +261,7 @@
     let roomTopic = "";
     let isHost = false;
     let players = [];
+    let currentResults = {}; // لحفظ النتائج مؤقتاً قبل إعلانها
 
     function connectDB(code, onConnectCallback) {
         client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
@@ -255,10 +286,14 @@
                 players = data.players;
                 updateUI();
             } 
+            // استقبال إشعار انتظار الحاكم ليكتب الحكم
+            else if (data.type === 'WAITING_FOR_JUDGE') {
+                showJudgeScreen(data.results);
+            }
+            // استقبال النتيجة النهائية مع الحكم
             else if (data.type === 'DRAW_RESULTS') {
                 showResults(data.results);
             }
-            // استقبال طلب الجولة الجديدة للأعضاء
             else if (data.type === 'NEW_ROUND' && !isHost) {
                 document.getElementById("rejoin-modal").classList.remove("hidden");
             }
@@ -318,25 +353,57 @@
     }
 
     function startDraw() {
-        if (players.length < 3) {
-            return alert("يجب أن يكون عدد الحاضرين 3 لاعبين على الأقل لبدء القرعة!");
+        if (players.length < 2) {
+            return alert("يجب أن يكون عدد الحاضرين لاعبين اثنين على الأقل لبدء القرعة!");
         }
 
-        const shuffled = [...players].sort(() => 0.5 - Math.random());
-        const results = { king: shuffled[0], victim: shuffled[1], witness: shuffled[2] };
+        let shuffled = [...players].sort(() => 0.5 - Math.random());
+        let king = shuffled[0];
+        let victim = shuffled[1];
+        
+        // إذا كان هناك لاعبان فقط، نضيف الشاهد الروبوت
+        let witness = players.length === 2 ? "الروبوت 🤖 (شاهد آلي)" : shuffled[2];
 
-        client.publish(roomTopic, JSON.stringify({ type: 'DRAW_RESULTS', results: results }));
+        const results = { king: king, victim: victim, witness: witness };
+
+        // إرسال رسالة للجميع للانتقال لشاشة كتابة الحكم أو الانتظار
+        client.publish(roomTopic, JSON.stringify({ type: 'WAITING_FOR_JUDGE', results: results }));
+    }
+
+    function showJudgeScreen(results) {
+        currentResults = results; // حفظ النتائج محلياً
+        document.getElementById("sec-lobby").classList.add("hidden");
+        
+        if (myName === results.king) {
+            // إذا كنت أنا الحاكم، أظهر لي شاشة الإدخال
+            document.getElementById("sec-judge-input").classList.remove("hidden");
+        } else {
+            // إذا كنت عضواً آخر، أظهر لي شاشة الانتظار
+            document.getElementById("sec-judge-waiting").classList.remove("hidden");
+            document.getElementById("waiting-for-king-msg").innerText = `جلالة الملك (${results.king}) يكتب الحكم الآن... ✍️👑`;
+        }
+    }
+
+    function submitRule() {
+        const ruleText = document.getElementById("rule-input").value.trim();
+        if (!ruleText) return alert("يجب عليك كتابة الحكم أولاً قبل المتابعة!");
+
+        // إضافة الحكم إلى النتائج وإرسالها للجميع لعرضها
+        currentResults.rule = ruleText;
+        client.publish(roomTopic, JSON.stringify({ type: 'DRAW_RESULTS', results: currentResults }));
     }
 
     function showResults(results) {
-        document.getElementById("sec-lobby").classList.add("hidden");
+        // إخفاء كافة شاشات الإدخال والانتظار
+        document.getElementById("sec-judge-input").classList.add("hidden");
+        document.getElementById("sec-judge-waiting").classList.add("hidden");
         document.getElementById("sec-result").classList.remove("hidden");
 
         document.getElementById("r-king").innerText = results.king;
         document.getElementById("r-victim").innerText = results.victim;
         document.getElementById("r-witness").innerText = results.witness;
+        document.getElementById("r-rule").innerText = results.rule; // عرض نص الحكم
 
-        // إظهار أزرار التحكم المناسبة للرئيس والأعضاء
         if (isHost) {
             document.getElementById("host-controls").classList.remove("hidden");
             document.getElementById("member-controls").classList.add("hidden");
@@ -346,32 +413,27 @@
         }
     }
 
-    // --- وظائف الجولة الجديدة ---
-
-    // 1. الرئيس يطلب جولة جديدة
     function requestNewRound() {
-        players = [myName]; // مسح القائمة وترك الرئيس فقط بانتظار البقية
+        players = [myName]; 
         
         document.getElementById("sec-result").classList.add("hidden");
         document.getElementById("sec-lobby").classList.remove("hidden");
+        document.getElementById("rule-input").value = ""; // تصفير حقل الحكم للجولة القادمة
         updateUI();
 
-        // إرسال طلب الجولة الجديدة وتحديث القائمة المفرغة
         client.publish(roomTopic, JSON.stringify({ type: 'NEW_ROUND' }));
         client.publish(roomTopic, JSON.stringify({ type: 'SYNC_PLAYERS', players: players }));
     }
 
-    // 2. العضو يوافق على الاستمرار
     function acceptRejoin() {
         document.getElementById("rejoin-modal").classList.add("hidden");
         document.getElementById("sec-result").classList.add("hidden");
         document.getElementById("sec-lobby").classList.remove("hidden");
+        document.getElementById("rule-input").value = ""; // تصفير الحقل للأعضاء أيضاً
         
-        // إرسال الاسم للرئيس ليضيفه للقائمة الجديدة
         client.publish(roomTopic, JSON.stringify({ type: 'JOIN_REQ', name: myName }));
     }
 
-    // 3. العضو يرفض الاستمرار
     function rejectRejoin() {
         location.reload();
     }
