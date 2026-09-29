@@ -1,4 +1,4 @@
-!DOCCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -75,7 +75,7 @@
     <h1>🏛️ مجلس الأحكام الملكي</h1>
     <div class="subtitle" id="welcome-msg">منصة الاقتراع والقرعة المباشرة عبر الدول</div>
 
-    <!-- 0. واجهة إنشاء الحساب (تظهر مرة واحدة) -->
+    <!-- 0. واجهة إنشاء الحساب (تظهر لمرة واحدة للزائر الجديد) -->
     <div id="sec-register" class="hidden">
         <h3 style="color:var(--gold); margin-bottom:12px; font-size:18px;">إنشاء حساب الحاكم</h3>
         <p style="color:#a497c6; font-size:13px; margin-bottom:15px;">أنشئ هويتك مرة واحدة وللأبد للمشاركة في المجالس:</p>
@@ -86,7 +86,7 @@
 
     <!-- 1. واجهة الغرف والمجالس المتاحة -->
     <div id="sec-join" class="hidden">
-        <button class="top-btn" onclick="openLeaderboard()">تـــوب الفـــائزين 🏆</button>
+        <button class="top-btn" onclick="openLeaderboard()">🏆 لوحة شرف الحكام (التوب)</button>
         
         <div class="list-box">
             <div class="list-title">
@@ -193,7 +193,7 @@
     const supabaseKey = 'sb_publishable_VriM1ecC1V0FazJXEqXirA_4L77MTBX';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    const THIRTY_MINUTES_MS = 30 * 60 * 1000; // مدة المجلس أصبحت نصف ساعة فقط
+    const THIRTY_MINUTES_MS = 30 * 60 * 1000;
     
     let myName = "";
     let myUsername = "";
@@ -201,6 +201,7 @@
     let currentRoomData = null;
     let roomSubscription = null;
 
+    // فحص المحفوظات فقط عند تحديث الصفحة Refresh
     function init() {
         const savedName = localStorage.getItem('royal_name');
         const savedUser = localStorage.getItem('royal_username');
@@ -211,6 +212,7 @@
             myUsername = savedUser;
             document.getElementById("welcome-msg").innerText = `مرحباً بك يا ${myName} 👑`;
 
+            // إذا أجرى المستخدم Refresh وهو متواجد بداخل مجلس، يظل بداخله
             if (savedRoom) {
                 roomId = savedRoom;
                 reconnectToRoom();
@@ -222,7 +224,6 @@
         }
     }
 
-    // إنشاء حساب مع التحقق من عدم تكرار اليوزر في قاعدة البيانات
     async function createAccount() {
         const nameInput = document.getElementById("reg-name").value.trim();
         let rawUser = document.getElementById("reg-username").value.trim().toLowerCase();
@@ -241,7 +242,6 @@
         btn.innerText = "جاري التحقق من اليوزر...";
 
         try {
-            // التحقق من قاعدة البيانات هل اليوزر مستخدم من قبل؟
             const { data: existingUsers } = await supabase.from('users').select('*');
             
             let isTaken = false;
@@ -256,7 +256,6 @@
                 return;
             }
 
-            // إذا كان اليوزر متاحاً، يتم حفظه محلياً وفي القاعدة
             localStorage.setItem('royal_name', nameInput);
             localStorage.setItem('royal_username', formattedUser);
 
@@ -275,10 +274,11 @@
         }
     }
 
+    // زر خروج من الحساب كاملاً: يمسح بيانات الحساب والذاكرة ويُرجعه لصفحة إنشاء الحساب الأولى
     function logoutAccount() {
         if(confirm("هل تريد تسجيل الخروج وحذف حسابك من هذا المتصفح؟")) {
             localStorage.clear();
-            location.reload();
+            showScreen('sec-register');
         }
     }
 
@@ -305,7 +305,6 @@
 
             if(rooms && rooms.length > 0) {
                 rooms.forEach(room => {
-                    // التحقق من أن عمر الغرفة أقل من 30 دقيقة
                     if (now - room.created_at < THIRTY_MINUTES_MS) {
                         count++;
                         const li = document.createElement("li");
@@ -317,7 +316,6 @@
                         li.onclick = () => openPassModal(room.id, room.name, room.pass);
                         ul.appendChild(li);
                     } else {
-                        // تنظيف المجالس التي تجاوزت 30 دقيقة
                         supabase.from('rooms').delete().eq('id', room.id).then();
                     }
                 });
@@ -521,27 +519,26 @@
         await supabase.from('rooms').update({ state: 'LOBBY' }).eq('id', roomId);
     }
 
-    // تعديل مغادرة المجلس: الآن تغادر القائمة فقط ولا تحذف المجلس نهائياً ليظل متاحاً
+    // زر خروج من المجلس: يمسح اسم المجلس من الذاكرة تماماً ثم ينقلك متسلسلاً للواجهة السابقة (المجالس المتاحة)
     async function leaveRoom() {
-        if (!roomId || !currentRoomData) return leaveRoomLocally();
-        let players = currentRoomData.players.filter(p => p !== myName);
-        
-        // تحديث الأعضاء في المجلس دون حذف المجلس نفسه
-        await supabase.from('rooms').update({ players: players }).eq('id', roomId);
+        if (roomId && currentRoomData) {
+            let players = currentRoomData.players.filter(p => p !== myName);
+            await supabase.from('rooms').update({ players: players }).eq('id', roomId);
+        }
         leaveRoomLocally();
     }
 
-    // زر خاص لرئيس المجلس لتدمير وإغلاق المجلس نهائياً
     async function destroyRoom() {
         if (!confirm("هل أنت متأكد من تدمير وإغلاق هذا المجلس نهائياً؟")) return;
         await supabase.from('rooms').delete().eq('id', roomId);
+        leaveRoomLocally();
     }
 
     function leaveRoomLocally() {
         if (roomSubscription) supabase.removeChannel(roomSubscription);
         roomId = "";
-        localStorage.removeItem('royal_room');
-        loadPublicRooms();
+        localStorage.removeItem('royal_room'); // حذف محدد المجلس من الذاكرة لكي لا يُعيدك إليه تلقائياً
+        loadPublicRooms(); // العودة المتسلسلة إلى شاشة المجالس المتاحة
     }
 
     function showScreen(id) {
